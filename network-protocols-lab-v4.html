@@ -1,0 +1,2647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Network Protocols Lab — Chaos Mode + Threats</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#080c10;--bg2:#0d1117;--bg3:#161b22;--bg4:#1c2128;
+  --border:#21262d;--border2:#30363d;--border3:#444c56;
+  --text:#cdd9e5;--text2:#8b949e;--text3:#545d68;
+  --green:#3fb950;--green2:#56d364;--green-d:#0d4a1f;
+  --blue:#58a6ff;--blue2:#79c0ff;--blue-d:#0d2149;
+  --amber:#d29922;--amber2:#e3b341;--amber-d:#3a2300;
+  --red:#f85149;--red-d:#3d0c09;
+  --purple:#bc8cff;--purple-d:#2a1b4a;
+  --teal:#39d353;--cyan:#76e3ea;--cyan-d:#0d3038;
+  --orange:#f0883e;--orange-d:#3a1a00;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Syne',sans-serif;
+  --r:6px;--r2:10px;--r3:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;overflow-x:hidden}
+
+/* ── Scanline overlay ─────────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
+}
+
+/* ── Header ───────────────────────────────────────── */
+header{
+  background:linear-gradient(180deg,#0d1117 0%,#080c10 100%);
+  border-bottom:1px solid var(--border2);
+  padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;
+  position:sticky;top:0;z-index:200;
+}
+.logo{
+  font-family:var(--display);font-size:18px;font-weight:800;
+  letter-spacing:-.02em;color:var(--text);
+  display:flex;align-items:center;gap:10px;
+}
+.logo-icon{
+  width:28px;height:28px;border:1.5px solid var(--green);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green-d);position:relative;overflow:hidden;
+}
+.logo-icon::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent 40%,rgba(63,185,80,.15) 100%);
+}
+.logo-icon svg{width:14px;height:14px;fill:var(--green)}
+.logo-sub{font-size:11px;font-weight:400;color:var(--text3);font-family:var(--mono);margin-top:1px}
+
+.header-pills{display:flex;gap:6px;margin-left:auto}
+.hpill{
+  font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border2);color:var(--text3);background:transparent;
+  font-family:var(--mono);
+}
+.hpill.green{border-color:#3fb95066;color:var(--green);background:#3fb95011}
+.hpill.blue{border-color:#58a6ff44;color:var(--blue);background:#58a6ff0d}
+
+/* ── Protocol Nav ─────────────────────────────────── */
+.proto-nav{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;background:var(--bg2);
+  padding:0 24px;
+}
+.proto-nav::-webkit-scrollbar{display:none}
+.pnav{
+  padding:12px 18px;font-size:11px;font-weight:500;color:var(--text3);
+  border:none;background:transparent;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s;
+  white-space:nowrap;font-family:var(--mono);letter-spacing:.02em;
+  display:flex;align-items:center;gap:6px;
+}
+.pnav:hover{color:var(--text2)}
+.pnav.active{color:var(--text);border-bottom-color:var(--accent,var(--green))}
+.pnav .dot{width:6px;height:6px;border-radius:50%;background:var(--accent,var(--green));opacity:.7}
+.pnav.active .dot{opacity:1;box-shadow:0 0 6px var(--accent,var(--green))}
+
+/* ── Main layout ──────────────────────────────────── */
+.workspace{display:flex;height:calc(100vh - 56px - 41px);overflow:hidden}
+.left-col{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.right-col{width:320px;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Toolbar ──────────────────────────────────────── */
+.toolbar{
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--bg2);flex-shrink:0;
+}
+.btn{
+  padding:5px 14px;border-radius:var(--r);border:1px solid var(--border2);
+  background:transparent;color:var(--text2);font-size:11px;font-weight:500;
+  cursor:pointer;transition:all .15s;font-family:var(--mono);
+  display:flex;align-items:center;gap:5px;
+}
+.btn:hover{border-color:var(--border3);color:var(--text);background:var(--bg3)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.primary{
+  background:var(--accent-bg,var(--green-d));
+  color:var(--accent,var(--green));
+  border-color:var(--accent-border,#3fb95055);
+}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn-icon{font-size:13px;line-height:1}
+.sep{width:1px;height:20px;background:var(--border2);flex-shrink:0}
+.sel-wrap{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+select{
+  padding:4px 8px;border-radius:var(--r);border:1px solid var(--border2);
+  background:var(--bg3);color:var(--text);font-size:11px;cursor:pointer;
+  font-family:var(--mono);
+}
+.speed-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);margin-left:auto}
+input[type=range]{width:70px;accent-color:var(--accent,var(--green))}
+
+/* ── Canvas area ──────────────────────────────────── */
+.canvas-area{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+canvas{display:block;width:100%;height:100%}
+
+/* ── Info strip ───────────────────────────────────── */
+.info-strip{
+  padding:8px 16px;border-top:1px solid var(--border);
+  font-size:10px;color:var(--text3);background:var(--bg2);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;min-height:34px;
+}
+.info-strip .accent{color:var(--accent,var(--green));font-weight:500}
+
+/* ── Right panels ─────────────────────────────────── */
+.panel-tabs{
+  display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;
+}
+.ptab{
+  flex:1;padding:8px 4px;font-size:10px;color:var(--text3);border:none;
+  background:transparent;cursor:pointer;font-family:var(--mono);
+  border-bottom:2px solid transparent;transition:all .2s;
+}
+.ptab.active{color:var(--text);border-bottom-color:var(--accent,var(--green))}
+
+.panel-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-track{background:transparent}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── Cards ────────────────────────────────────────── */
+.card{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r2);padding:10px 12px;
+}
+.card-title{font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.card.accent-border{border-left:3px solid var(--accent,var(--green))}
+
+/* ── Stat grid ────────────────────────────────────── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 9px}
+.stat-label{font-size:9px;color:var(--text3);margin-bottom:2px}
+.stat-val{font-size:16px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.stat-val.green{color:var(--green)}
+.stat-val.blue{color:var(--blue)}
+.stat-val.amber{color:var(--amber)}
+.stat-val.red{color:var(--red)}
+
+/* ── Table ────────────────────────────────────────── */
+.data-tbl{width:100%;border-collapse:collapse;font-size:10px}
+.data-tbl th{padding:4px 6px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);text-align:left;font-size:9px;letter-spacing:.05em;text-transform:uppercase}
+.data-tbl td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.data-tbl tr:last-child td{border:none}
+.data-tbl tr.hl td{background:rgba(88,166,255,.06);color:var(--text)}
+.mono{font-family:var(--mono)}
+.tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.04em}
+.tag-g{background:var(--green-d);color:var(--green);border:1px solid #3fb95044}
+.tag-b{background:var(--blue-d);color:var(--blue);border:1px solid #58a6ff44}
+.tag-a{background:var(--amber-d);color:var(--amber);border:1px solid #d2992244}
+.tag-r{background:var(--red-d);color:var(--red);border:1px solid #f8514944}
+.tag-p{background:var(--purple-d);color:var(--purple);border:1px solid #bc8cff44}
+.tag-c{background:var(--cyan-d);color:var(--cyan);border:1px solid #76e3ea44}
+
+/* ── Log ──────────────────────────────────────────── */
+.log-box{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-thumb{background:var(--border2)}
+.log-entry{font-size:10px;padding:3px 0;border-bottom:1px solid var(--border);line-height:1.6;color:var(--text3)}
+.log-entry:last-child{border:none}
+.log-entry .ts{color:var(--text3);margin-right:4px}
+.log-green{color:var(--green)}
+.log-blue{color:var(--blue)}
+.log-amber{color:var(--amber)}
+.log-purple{color:var(--purple)}
+.log-cyan{color:var(--cyan)}
+.log-red{color:var(--red)}
+.log-orange{color:var(--orange)}
+
+/* ── Step list ────────────────────────────────────── */
+.step-list{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto}
+.step-item{display:flex;gap:6px;align-items:baseline;font-size:10px;padding:3px 0;border-bottom:1px solid var(--border)}
+.step-item:last-child{border:none}
+.step-badge{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0;letter-spacing:.05em}
+
+/* ── Phase description ────────────────────────────── */
+.phase-desc{
+  font-size:10px;color:var(--text2);line-height:1.7;padding:8px 10px;
+  background:var(--bg4);border-radius:var(--r);border-left:2px solid var(--accent,var(--green));
+}
+.phase-desc strong{color:var(--text);font-weight:500}
+
+/* ── Packet legend ────────────────────────────────── */
+.pkt-legend{display:flex;flex-wrap:wrap;gap:6px}
+.pkt-li{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text3)}
+.pkt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── Phase step tabs ──────────────────────────────── */
+.phase-steps{display:flex;gap:4px;flex-wrap:wrap}
+.pstep{
+  padding:4px 10px;border-radius:20px;font-size:10px;font-weight:500;
+  border:1px solid var(--border);background:transparent;color:var(--text3);
+  cursor:pointer;transition:all .15s;font-family:var(--mono);
+}
+.pstep.active{background:var(--accent-bg,var(--green-d));color:var(--accent,var(--green));border-color:var(--accent-border,#3fb95055)}
+
+/* ── Topology info ────────────────────────────────── */
+.topo-label{
+  position:absolute;font-size:9px;font-family:var(--mono);
+  color:var(--text3);pointer-events:none;white-space:nowrap;
+}
+
+/* ── Animations ───────────────────────────────────── */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn .3s ease forwards}
+
+/* ── Chaos Mode ───────────────────────────────────── */
+.chaos-active canvas{cursor:crosshair!important}
+.btn-chaos-on{background:#ff6e4022!important;color:#ff6e40!important;border-color:#ff6e4066!important;animation:chaosPulse 1.5s ease-in-out infinite}
+@keyframes chaosPulse{0%,100%{box-shadow:0 0 0 0 #ff6e4033}50%{box-shadow:0 0 0 6px #ff6e4000}}
+
+/* ── Threat label ─────────────────────────────────── */
+.threat-label{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  background:#3d0c09;border:1px solid #f8514966;border-radius:20px;
+  padding:3px 14px;font-size:10px;font-weight:700;color:#f85149;
+  letter-spacing:.08em;pointer-events:none;z-index:10;
+  display:none;
+}
+.threat-label.show{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── CAM table flood bars ─────────────────────────── */
+.cam-bar-wrap{margin-top:6px}
+.cam-bar-bg{background:var(--border);border-radius:4px;height:14px;overflow:hidden;margin-bottom:4px}
+.cam-bar-fill{height:100%;border-radius:4px;transition:width .3s;display:flex;align-items:center;padding-left:6px;font-size:9px;font-weight:700;color:#080c10}
+
+/* ── SYN queue bars ───────────────────────────────── */
+.syn-queue{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.syn-slot{height:12px;border-radius:3px;font-size:8px;font-weight:700;display:flex;align-items:center;padding-left:5px;transition:all .3s}
+.syn-slot.used{background:#f8514933;border:1px solid #f8514966;color:#f85149}
+.syn-slot.legit{background:#3fb95033;border:1px solid #3fb95066;color:#3fb950}
+.syn-slot.empty{background:var(--border);border:1px solid transparent;color:transparent}
+
+/* ── Attack packet glow ───────────────────────────── */
+@keyframes attackPulse{0%,100%{opacity:1}50%{opacity:.6}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 16 16"><path d="M2 8h12M8 2v12M4 4l8 8M12 4l-8 8" stroke="#3fb950" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      Network Protocols Lab
+      <div class="logo-sub">Interactive Protocol Visualizer</div>
+    </div>
+  </div>
+  <div class="header-pills">
+    <span class="hpill green">● LIVE</span>
+    <span class="hpill blue">8 Protocols</span>
+    <span class="hpill" style="border-color:#ff6e4066;color:#ff6e40;background:#ff6e4011" id="chaos-badge">⚡ Chaos OFF</span>
+    <span class="hpill" style="border-color:#f8514966;color:#f85149;background:#f8514911">☠ Threats</span>
+  </div>
+</header>
+
+<nav class="proto-nav" id="proto-nav">
+  <button class="pnav active" data-proto="ospf" style="--accent:#3fb950;--accent-border:#3fb95066"><span class="dot"></span>OSPF</button>
+  <button class="pnav" data-proto="bgp"  style="--accent:#58a6ff;--accent-border:#58a6ff66"><span class="dot"></span>BGP</button>
+  <button class="pnav" data-proto="stp"  style="--accent:#d29922;--accent-border:#d2992266"><span class="dot"></span>STP</button>
+  <button class="pnav" data-proto="tcp"  style="--accent:#bc8cff;--accent-border:#bc8cff66"><span class="dot"></span>TCP/IP</button>
+  <button class="pnav" data-proto="arp"  style="--accent:#76e3ea;--accent-border:#76e3ea66"><span class="dot"></span>ARP</button>
+  <button class="pnav" data-proto="vlan" style="--accent:#f0883e;--accent-border:#f0883e66"><span class="dot"></span>VLAN</button>
+  <button class="pnav" data-proto="dhcp" style="--accent:#e3b341;--accent-border:#e3b34166"><span class="dot"></span>DHCP</button>
+  <button class="pnav" data-proto="dns"  style="--accent:#ff7b72;--accent-border:#ff7b7266"><span class="dot"></span>DNS</button>
+  <div style="width:1px;background:var(--border2);margin:8px 4px;flex-shrink:0"></div>
+  <span style="font-size:9px;color:#f85149;padding:0 6px;display:flex;align-items:center;letter-spacing:.08em;font-weight:700;white-space:nowrap">☠ THREATS</span>
+  <button class="pnav" data-proto="arp-spoof" style="--accent:#f85149;--accent-border:#f8514966"><span class="dot"></span>ARP Spoofing</button>
+  <button class="pnav" data-proto="syn-flood" style="--accent:#ff6e40;--accent-border:#ff6e4066"><span class="dot"></span>SYN Flood</button>
+  <button class="pnav" data-proto="mac-flood" style="--accent:#d29922;--accent-border:#d2992266"><span class="dot"></span>MAC Flooding</button>
+</nav>
+
+<div class="workspace">
+  <div class="left-col">
+    <div class="toolbar" id="toolbar">
+      <button class="btn primary" id="btn-run"><span class="btn-icon">▶</span> Run</button>
+      <button class="btn" id="btn-step">Step →</button>
+      <button class="btn" id="btn-reset">↺ Reset</button>
+      <div class="sep"></div>
+      <button class="btn" id="btn-chaos" title="Click nodes/links on canvas to break them">⚡ Chaos Mode</button>
+      <div class="sep"></div>
+      <div class="sel-wrap" id="src-wrap">
+        From <select id="sel-src"></select>
+      </div>
+      <div class="sel-wrap" id="dst-wrap">
+        To <select id="sel-dst"></select>
+      </div>
+      <div class="speed-wrap">
+        Speed <input type="range" id="speed-slider" min="1" max="5" value="3"/>
+      </div>
+    </div>
+
+    <div id="phase-bar" style="display:none;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0">
+      <div class="phase-steps" id="phase-steps"></div>
+    </div>
+
+    <div class="canvas-area" style="position:relative">
+      <canvas id="c"></canvas>
+      <div class="threat-label" id="threat-label">☠ ATTACK IN PROGRESS</div>
+    </div>
+
+    <div class="info-strip" id="info-strip">
+      <span style="color:var(--text3)">Select a protocol above and click</span>
+      <span class="accent">▶ Run</span>
+      <span style="color:var(--text3)">to start the simulation</span>
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="panel-tabs">
+      <button class="ptab active" data-tab="info">Info</button>
+      <button class="ptab" data-tab="table">Tables</button>
+      <button class="ptab" data-tab="log">Log</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H;
+function resizeCanvas(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width  = rect.width;
+  H = canvas.height = rect.height;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+let currentProto = 'ospf';
+let currentTab   = 'info';
+let running      = false;
+let timers       = [];
+let packets      = [];
+let simState     = {};
+let stepQueue    = [];
+let stepIdx      = 0;
+let stepMode     = false;
+let logEntries   = [];
+let phaseIdx     = 0;
+let speedMult    = 1;
+
+// ── Chaos Mode globals ──────────────────────────────
+let chaosMode    = false;
+let chaosEnabled = false; // set true for protocols that support it
+
+document.getElementById('speed-slider').addEventListener('input', e => {
+  speedMult = +e.target.value;
+});
+function spd(ms){ return Math.max(30, ms / speedMult); }
+
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+// The Step Mode aware timer!
+function later(fn, ms){ 
+  if(stepMode) {
+    stepQueue.push(fn);
+    document.getElementById('btn-step').classList.add('primary'); 
+    return null;
+  }
+  const t = setTimeout(fn, spd(ms)); 
+  timers.push(t); 
+  return t; 
+}
+
+function raf(fn){ const id = requestAnimationFrame(fn); return id; }
+
+// ═══════════════════════════════════════════════════════════
+//  TOPOLOGY DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+const TOPOS = {
+
+  ospf: {
+    nodes: [
+      {id:0,label:'R1',xf:.12,yf:.28,rid:1,type:'router'},
+      {id:1,label:'R2',xf:.38,yf:.15,rid:6,type:'router'},
+      {id:2,label:'R3',xf:.70,yf:.22,rid:3,type:'router'},
+      {id:3,label:'R4',xf:.12,yf:.68,rid:2,type:'router'},
+      {id:4,label:'R5',xf:.40,yf:.75,rid:5,type:'router'},
+      {id:5,label:'R6',xf:.72,yf:.65,rid:4,type:'router'},
+      {id:6,label:'R7',xf:.88,yf:.42,rid:7,type:'router'},
+    ],
+    links:[
+      {a:0,b:1,cost:10},{a:1,b:2,cost:5},{a:0,b:3,cost:15},
+      {a:1,b:4,cost:20},{a:2,b:5,cost:10},{a:3,b:4,cost:8},
+      {a:4,b:5,cost:12},{a:1,b:5,cost:25},{a:2,b:6,cost:7},
+      {a:5,b:6,cost:9},{a:3,b:5,cost:30},
+    ],
+    accent:'#3fb950', accentBg:'#0d4a1f', accentBorder:'#3fb95055',
+  },
+
+  bgp: {
+    nodes:[
+      {id:0,label:'AS100',sub:'ISP-A',xf:.15,yf:.25,asn:100,type:'as'},
+      {id:1,label:'AS200',sub:'ISP-B',xf:.50,yf:.12,asn:200,type:'as'},
+      {id:2,label:'AS300',sub:'ISP-C',xf:.82,yf:.25,asn:300,type:'as'},
+      {id:3,label:'AS400',sub:'Ent-A',xf:.20,yf:.68,asn:400,type:'as'},
+      {id:4,label:'AS500',sub:'Ent-B',xf:.50,yf:.80,asn:500,type:'as'},
+      {id:5,label:'AS600',sub:'Ent-C',xf:.80,yf:.68,asn:600,type:'as'},
+    ],
+    links:[
+      {a:0,b:1,ebgp:true,med:100},{a:1,b:2,ebgp:true,med:80},
+      {a:0,b:3,ebgp:false,med:0},{a:1,b:4,ebgp:false,med:0},
+      {a:2,b:5,ebgp:false,med:0},{a:3,b:4,ebgp:true,med:200},
+      {a:4,b:5,ebgp:true,med:150},{a:0,b:2,ebgp:true,med:120},
+    ],
+    accent:'#58a6ff', accentBg:'#0d2149', accentBorder:'#58a6ff55',
+  },
+
+  stp: {
+    nodes:[
+      {id:0,label:'SW1',xf:.50,yf:.15,bid:1000,type:'switch',port:4},
+      {id:1,label:'SW2',xf:.20,yf:.42,bid:2000,type:'switch',port:3},
+      {id:2,label:'SW3',xf:.80,yf:.42,bid:3000,type:'switch',port:3},
+      {id:3,label:'SW4',xf:.12,yf:.72,bid:4000,type:'switch',port:2},
+      {id:4,label:'SW5',xf:.38,yf:.72,bid:5000,type:'switch',port:3},
+      {id:5,label:'SW6',xf:.62,yf:.72,bid:6000,type:'switch',port:2},
+      {id:6,label:'SW7',xf:.88,yf:.72,bid:7000,type:'switch',port:2},
+    ],
+    links:[
+      {a:0,b:1,cost:19},{a:0,b:2,cost:19},
+      {a:1,b:3,cost:19},{a:1,b:4,cost:19},
+      {a:2,b:5,cost:19},{a:2,b:6,cost:19},
+      {a:1,b:2,cost:19},{a:3,b:4,cost:19},
+    ],
+    accent:'#d29922', accentBg:'#3a2300', accentBorder:'#d2992255',
+  },
+
+  tcp: {
+    nodes:[
+      {id:0,label:'Client',sub:'192.168.1.10',xf:.18,yf:.45,type:'host'},
+      {id:1,label:'Server',sub:'10.0.0.50',   xf:.82,yf:.45,type:'host'},
+    ],
+    links:[{a:0,b:1,cost:1,latency:'12ms'}],
+    accent:'#bc8cff', accentBg:'#2a1b4a', accentBorder:'#bc8cff55',
+  },
+
+  arp: {
+    nodes:[
+      {id:0,label:'Host-A', sub:'192.168.1.10\nAA:BB:CC:11:22:33',xf:.15,yf:.45,type:'host'},
+      {id:1,label:'Host-B', sub:'192.168.1.20\nDD:EE:FF:44:55:66',xf:.50,yf:.22,type:'host'},
+      {id:2,label:'Host-C', sub:'192.168.1.30\n11:22:33:44:55:66',xf:.85,yf:.45,type:'host'},
+      {id:3,label:'Switch', sub:'L2 Switch',xf:.50,yf:.62,type:'switch',bid:1},
+      {id:4,label:'GW',     sub:'192.168.1.1\n00:11:22:33:44:55',xf:.50,yf:.85,type:'router'},
+    ],
+    links:[
+      {a:0,b:3,cost:1},{a:1,b:3,cost:1},{a:2,b:3,cost:1},{a:3,b:4,cost:1}
+    ],
+    accent:'#76e3ea', accentBg:'#0d3038', accentBorder:'#76e3ea55',
+  },
+
+  vlan: {
+    nodes:[
+      {id:0,label:'Core-SW', sub:'Trunk',xf:.50,yf:.15,type:'switch',bid:100,vlan:'trunk'},
+      {id:1,label:'Dist-SW1',sub:'Trunk',xf:.22,yf:.40,type:'switch',bid:200,vlan:'trunk'},
+      {id:2,label:'Dist-SW2',sub:'Trunk',xf:.78,yf:.40,type:'switch',bid:300,vlan:'trunk'},
+      {id:3,label:'PC-Sales1', sub:'VLAN 10',xf:.08,yf:.70,type:'host',vlan:10},
+      {id:4,label:'PC-Sales2', sub:'VLAN 10',xf:.22,yf:.82,type:'host',vlan:10},
+      {id:5,label:'PC-HR1',    sub:'VLAN 20',xf:.36,yf:.70,type:'host',vlan:20},
+      {id:6,label:'PC-IT1',    sub:'VLAN 30',xf:.64,yf:.70,type:'host',vlan:30},
+      {id:7,label:'PC-HR2',    sub:'VLAN 20',xf:.78,yf:.82,type:'host',vlan:20},
+      {id:8,label:'PC-IT2',    sub:'VLAN 30',xf:.92,yf:.70,type:'host',vlan:30},
+      {id:9,label:'Server',    sub:'VLAN 99',xf:.50,yf:.82,type:'host',vlan:99},
+    ],
+    links:[
+      {a:0,b:1,trunk:true},{a:0,b:2,trunk:true},
+      {a:1,b:3,vlan:10},{a:1,b:4,vlan:10},{a:1,b:5,vlan:20},
+      {a:2,b:6,vlan:30},{a:2,b:7,vlan:20},{a:2,b:8,vlan:30},
+      {a:0,b:9,vlan:99},
+    ],
+    accent:'#f0883e', accentBg:'#3a1a00', accentBorder:'#f0883e55',
+  },
+
+  dhcp: {
+    nodes:[
+      {id:0,label:'PC-Client', sub:'0.0.0.0\nMAC: AA:BB',xf:.15,yf:.45,type:'host'},
+      {id:1,label:'Switch', sub:'L2',xf:.50,yf:.45,type:'switch'},
+      {id:2,label:'DHCP-Srv', sub:'10.0.0.1\nPool: 10.0.0.100+',xf:.85,yf:.45,type:'server'},
+    ],
+    links:[{a:0,b:1,cost:1}, {a:1,b:2,cost:1}],
+    accent:'#e3b341', accentBg:'#3a2300', accentBorder:'#e3b34155',
+  },
+
+  dns: {
+    nodes:[
+      {id:0,label:'Client', sub:'192.168.1.5',xf:.10,yf:.50,type:'host'},
+      {id:1,label:'Local DNS', sub:'8.8.8.8\nRecursive',xf:.40,yf:.50,type:'server'},
+      {id:2,label:'Root (.)', sub:'a.root-servers.net',xf:.80,yf:.15,type:'server'},
+      {id:3,label:'TLD (.com)', sub:'a.gtld-servers.net',xf:.80,yf:.50,type:'server'},
+      {id:4,label:'Authoritative', sub:'ns1.example.com',xf:.80,yf:.85,type:'server'},
+    ],
+    links:[
+      {a:0,b:1,cost:1}, {a:1,b:2,cost:10}, {a:1,b:3,cost:15}, {a:1,b:4,cost:20}
+    ],
+    accent:'#ff7b72', accentBg:'#3d0c09', accentBorder:'#ff7b7255',
+  },
+
+  'arp-spoof': {
+    nodes:[
+      {id:0,label:'Victim',    sub:'192.168.1.10\nAA:BB:CC:11:22:33',xf:.15,yf:.35,type:'host'},
+      {id:1,label:'Gateway',   sub:'192.168.1.1\n00:11:22:33:44:55',xf:.50,yf:.15,type:'router'},
+      {id:2,label:'Attacker',  sub:'192.168.1.99\nDE:AD:BE:EF:00:01',xf:.85,yf:.35,type:'host',isAttacker:true},
+      {id:3,label:'Switch',    sub:'CAM Table',xf:.50,yf:.55,type:'switch',bid:1},
+      {id:4,label:'Internet',  sub:'Traffic Dest',xf:.50,yf:.85,type:'server'},
+    ],
+    links:[
+      {a:0,b:3,cost:1},{a:1,b:3,cost:1},{a:2,b:3,cost:1},{a:3,b:4,cost:1}
+    ],
+    accent:'#f85149', accentBg:'#3d0c09', accentBorder:'#f8514955',
+  },
+
+  'syn-flood': {
+    nodes:[
+      {id:0,label:'Server',   sub:'10.0.0.1:80\nSYN Queue: 128',xf:.50,yf:.20,type:'server'},
+      {id:1,label:'Legit-A',  sub:'203.0.113.10',xf:.15,yf:.65,type:'host'},
+      {id:2,label:'Bot-1',    sub:'Spoofed SRC',xf:.32,yf:.80,type:'host',isAttacker:true},
+      {id:3,label:'Bot-2',    sub:'Spoofed SRC',xf:.50,yf:.88,type:'host',isAttacker:true},
+      {id:4,label:'Bot-3',    sub:'Spoofed SRC',xf:.68,yf:.80,type:'host',isAttacker:true},
+      {id:5,label:'Legit-B',  sub:'203.0.113.20',xf:.85,yf:.65,type:'host'},
+      {id:6,label:'C&C',      sub:'Command & Control',xf:.85,yf:.20,type:'host',isAttacker:true},
+    ],
+    links:[
+      {a:1,b:0,cost:1},{a:2,b:0,cost:1},{a:3,b:0,cost:1},
+      {a:4,b:0,cost:1},{a:5,b:0,cost:1},{a:6,b:2,cost:1},
+      {a:6,b:3,cost:1},{a:6,b:4,cost:1},
+    ],
+    accent:'#ff6e40', accentBg:'#3a1200', accentBorder:'#ff6e4055',
+  },
+
+  'mac-flood': {
+    nodes:[
+      {id:0,label:'Attacker', sub:'Sends 900k frames',xf:.15,yf:.50,type:'host',isAttacker:true},
+      {id:1,label:'Switch',   sub:'CAM: 0/1024',xf:.50,yf:.50,type:'switch',bid:1},
+      {id:2,label:'Host-A',   sub:'192.168.1.10',xf:.85,yf:.25,type:'host'},
+      {id:3,label:'Host-B',   sub:'192.168.1.11',xf:.85,yf:.50,type:'host'},
+      {id:4,label:'Host-C',   sub:'192.168.1.12',xf:.85,yf:.75,type:'host'},
+    ],
+    links:[
+      {a:0,b:1,cost:1},{a:1,b:2,cost:1},{a:1,b:3,cost:1},{a:1,b:4,cost:1}
+    ],
+    accent:'#d29922', accentBg:'#3a2300', accentBorder:'#d2992255',
+  },
+};
+
+const VLAN_COLORS = {10:'#3fb950',20:'#58a6ff',30:'#bc8cff',99:'#f0883e',trunk:'#d29922'};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE HELPERS
+// ═══════════════════════════════════════════════════════════
+function getNodePos(n){
+  return { x: n.xf * W, y: n.yf * H };
+}
+function getTopo(){ return TOPOS[currentProto]; }
+function getAccent(){ return getTopo().accent || '#3fb950'; }
+
+function initSimState(){
+  const t = getTopo();
+  simState = {
+    nodes: t.nodes.map(n=>({...n, state:'idle', active:false, special:''})),
+    links: t.links.map(l=>({...l, active:false, blocked:false, state:''})),
+    drId: -1, bdrId: -1,
+    neighbors: [],
+    lsdb: [],
+    spfPath: [], spfPathEdges: new Set(),
+    spfDist: {}, spfSteps: [], spfRoutingTable: [],
+    bgpPeers: [], bgpTable: [],
+    stpRoot: -1, stpBlocked: new Set(),
+    tcpPhase: '', tcpSeq: 0, tcpAck: 0,
+    arpTable: [],
+    vlanTable: [],
+    dhcpLeases: [],
+    dnsCache: [],
+    // Threat states
+    arpSpoofTable: [], arpPoisoned: false,
+    synQueue: [], synQueueMax: 8, synDropping: false,
+    camTable: [], camFull: false, camFillPct: 0,
+    // Chaos state
+    brokenNodes: new Set(), brokenLinks: new Set(),
+    stats: { pkts: 0, hellos: 0, lsas: 0, convergence: 0 },
+  };
+  packets = [];
+  logEntries = [];
+  stepQueue = []; stepIdx = 0; phaseIdx = 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════════════
+const ACCENT_COLORS = {
+  ospf:'#3fb950',bgp:'#58a6ff',stp:'#d29922',tcp:'#bc8cff',arp:'#76e3ea',
+  vlan:'#f0883e',dhcp:'#e3b341',dns:'#ff7b72',
+  'arp-spoof':'#f85149','syn-flood':'#ff6e40','mac-flood':'#d29922'
+};
+const CHAOS_PROTOCOLS = new Set(['ospf','bgp','stp','eigrp']);
+
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`${r},${g},${b}`;
+}
+
+function drawGrid(){
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.022)';
+  ctx.lineWidth=0.5;
+  const gs=40;
+  for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+}
+
+function getNodeStyle(n){
+  const accent = getAccent();
+  const proto = currentProto;
+  let fill='#161b22',stroke='#30363d',textColor='#8b949e',glow=false;
+
+  // Chaos-broken node (dead)
+  if(simState.brokenNodes&&simState.brokenNodes.has(n.id)){
+    return{fill:'#1a0a0a',stroke:'#f85149',textColor:'#f85149',glow:false,broken:true};
+  }
+  // Attacker node (threat protocols)
+  if(n.isAttacker){
+    const g=n.active||false;
+    return{fill:'rgba(248,81,73,.15)',stroke:'#f85149',textColor:'#f85149',glow:g};
+  }
+  // Poisoned/compromised node
+  if(n.poisoned){
+    return{fill:'rgba(248,81,73,.12)',stroke:'#f85149',textColor:'#f85149',glow:true};
+  }
+  // Fail-open switch (MAC flood)
+  if(n.failOpen){
+    return{fill:'rgba(210,153,34,.18)',stroke:'#d29922',textColor:'#d29922',glow:true};
+  }
+
+  if(proto==='vlan' && n.vlan){
+    const vc = VLAN_COLORS[n.vlan]||accent;
+    stroke=vc; textColor=vc;
+    fill=`rgba(${hexToRgb(vc)},.08)`;
+    if(n.active){glow=true;fill=`rgba(${hexToRgb(vc)},.18)`;}
+  } else if(n.isRoot||n.isDR){
+    fill=`rgba(${hexToRgb(accent)},.18)`;stroke=accent;textColor=accent;glow=true;
+  } else if(n.isBDR){
+    fill='rgba(63,185,80,.08)';stroke='#3fb950';textColor='#3fb950';
+  } else if(n.state==='active'||n.active){
+    fill=`rgba(${hexToRgb(accent)},.12)`;stroke=accent;textColor=accent;glow=true;
+  } else if(n.blocked){
+    fill='rgba(248,81,73,.06)';stroke='#f85149';textColor='#f85149';
+  } else if(n.state==='idle'){
+    fill='#161b22';stroke='#30363d';textColor='#545d68';
+  }
+  return{fill,stroke,textColor,glow};
+}
+
+function drawNode(n){
+  const {x,y} = getNodePos(n);
+  const style = getNodeStyle(n);
+  const {fill,stroke,textColor,glow} = style;
+  const isLarge = n.type==='as' || n.type==='server';
+  const R = isLarge?30:n.type==='switch'?24:22;
+
+  ctx.save();
+  if(glow){ ctx.shadowColor=stroke;ctx.shadowBlur=18; }
+
+  if(n.type==='switch'||n.type==='as'||n.type==='server'){
+    const w=isLarge?70:50,h=isLarge?38:32;
+    roundRect(ctx,x-w/2,y-h/2,w,h,8);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=style.broken?2:1.2;ctx.stroke();
+  } else {
+    ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=style.broken?2:1.2;ctx.stroke();
+  }
+  ctx.shadowBlur=0;
+
+  // label
+  ctx.fillStyle=textColor;
+  ctx.font=`500 11px 'JetBrains Mono',monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(n.label,x,n.sub?y-5:y);
+
+  if(n.sub){
+    ctx.fillStyle='#545d68';
+    ctx.font=`9px 'JetBrains Mono',monospace`;
+    const subLines=n.sub.split('\n');
+    subLines.forEach((l,i)=>ctx.fillText(l,x,y+6+i*10));
+  }
+
+  // Chaos broken overlay
+  if(style.broken){
+    ctx.strokeStyle='#f85149';ctx.lineWidth=2;
+    const s=10;
+    ctx.beginPath();ctx.moveTo(x-s,y-s);ctx.lineTo(x+s,y+s);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+s,y-s);ctx.lineTo(x-s,y+s);ctx.stroke();
+    drawBadge(x+R-2,y-R+2,'DOWN','#f85149');
+    ctx.restore();return;
+  }
+
+  // badges
+  if(n.isAttacker){
+    drawBadge(x+R-2,y-R+2,'ATK','#f85149');
+  } else if(n.poisoned){
+    drawBadge(x+R-2,y-R+2,'PWN','#f85149');
+  } else if(n.failOpen){
+    drawBadge(x+(n.type==='switch'?28:R)-2,y-(n.type==='switch'?18:R)+2,'HUB!','#d29922');
+  } else if(n.isDR){
+    drawBadge(x+R-2,y-R+2,'DR','#d29922');
+  } else if(n.isBDR){
+    drawBadge(x+R-2,y-R+2,'BDR','#3fb950');
+  } else if(n.isRoot){
+    drawBadge(x+(n.type==='switch'?28:R)-2,y-(n.type==='switch'?18:R)+2,'ROOT','#d29922');
+  } else if(n.blocked){
+    drawBadge(x+(n.type==='switch'?28:R)-2,y-(n.type==='switch'?18:R)+2,'BLK','#f85149');
+  }
+
+  // chaos mode hover ring
+  if(chaosMode&&chaosEnabled&&!style.broken){
+    ctx.beginPath();ctx.arc(x,y,R+4,0,Math.PI*2);
+    ctx.strokeStyle='#ff6e4033';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+  }
+
+  // state dot
+  if(n.type!=='as' && n.type!=='server'){
+    ctx.beginPath();ctx.arc(x-R+5,y+R-5,4,0,Math.PI*2);
+    ctx.fillStyle=n.active?stroke:'#21262d';ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBadge(x,y,text,color){
+  ctx.save();
+  ctx.font=`700 7px 'JetBrains Mono',monospace`;
+  const tw=ctx.measureText(text).width;
+  ctx.fillStyle=color+'22';
+  roundRect(ctx,x-2,y-7,tw+8,10,3);ctx.fill();
+  ctx.strokeStyle=color+'66';ctx.lineWidth=.5;ctx.stroke();
+  ctx.fillStyle=color;ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(text,x+2,y-2);
+  ctx.restore();
+}
+
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);
+  c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);
+  c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);
+  c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);
+  c.quadraticCurveTo(x,y,x+r,y);c.closePath();
+}
+
+function drawLink(l){
+  const topo = getTopo();
+  const a = simState.nodes[l.a], b = simState.nodes[l.b];
+  const pa=getNodePos(a),pb=getNodePos(b);
+  const key=[l.a,l.b].sort().join('-');
+  const isPath=simState.spfPathEdges.has(key);
+  const isBlocked=simState.stpBlocked.has(key)||l.blocked;
+  const isBroken=simState.brokenLinks&&simState.brokenLinks.has(key);
+  const accent=getAccent();
+
+  ctx.save();
+  ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);
+
+  if(isBroken){
+    ctx.strokeStyle='#f85149';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+    ctx.globalAlpha=0.4;
+  } else if(isPath){
+    ctx.strokeStyle=accent;ctx.lineWidth=2.5;ctx.setLineDash([]);
+    ctx.shadowColor=accent;ctx.shadowBlur=8;
+  } else if(isBlocked){
+    ctx.strokeStyle='#f8514944';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  } else if(l.attack){
+    ctx.strokeStyle='#f8514988';ctx.lineWidth=2;ctx.setLineDash([2,2]);
+  } else if(l.active||l.state==='active'){
+    ctx.strokeStyle=accent+'99';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  } else if(l.trunk){
+    ctx.strokeStyle='#d29922aa';ctx.lineWidth=2;ctx.setLineDash([3,2]);
+  } else if(l.vlan&&VLAN_COLORS[l.vlan]){
+    ctx.strokeStyle=VLAN_COLORS[l.vlan]+'88';ctx.lineWidth=1.5;ctx.setLineDash([]);
+  } else {
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  }
+  ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.globalAlpha=1;
+
+  if(l.cost>1&&!isBroken){
+    const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
+    const dx=pb.y-pa.y,dy=pa.x-pb.x,len=Math.sqrt(dx*dx+dy*dy)||1;
+    ctx.fillStyle=isPath?accent:'#444c56';
+    ctx.font=`9px 'JetBrains Mono',monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(l.cost,mx+dx/len*12,my+dy/len*12);
+  }
+
+  if(isBlocked||isBroken){
+    const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
+    ctx.fillStyle=isBroken?'#f85149':'#f85149';
+    ctx.font=`bold ${isBroken?12:14}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(isBroken?'✗':'✕',mx,my);
+  }
+
+  // chaos hover hint on links
+  if(chaosMode&&chaosEnabled&&!isBroken){
+    const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
+    ctx.beginPath();ctx.arc(mx,my,5,0,Math.PI*2);
+    ctx.fillStyle='#ff6e4033';ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPacket(p){
+  ctx.save();
+  ctx.beginPath();ctx.arc(p.x,p.y,p.r||7,0,Math.PI*2);
+  ctx.fillStyle=p.color;ctx.fill();
+  if(p.glow){ctx.shadowColor=p.color;ctx.shadowBlur=16;}
+  ctx.strokeStyle='#080c10';ctx.lineWidth=1.5;ctx.stroke();
+  if(p.label){
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#080c10';
+    ctx.font=`bold 7px 'JetBrains Mono',monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p.label,p.x,p.y);
+  }
+  ctx.restore();
+}
+
+function render(){
+  if(!W||!H) return;
+  ctx.clearRect(0,0,W,H);
+  drawGrid();
+  const topo=getTopo();
+  topo.links.forEach(l=>drawLink(l));
+  simState.nodes.forEach(n=>drawNode(n));
+  packets.forEach(p=>drawPacket(p));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PACKET ANIMATION
+// ═══════════════════════════════════════════════════════════
+function animPkt(fromId,toId,opts,cb){
+  const a=simState.nodes[fromId],b=simState.nodes[toId];
+  const pa=getNodePos(a),pb=getNodePos(b);
+  const pkt={
+    x:pa.x,y:pa.y,
+    color:opts.color||getAccent(),
+    label:opts.label||'',
+    glow:opts.glow!==false,
+    r:opts.r||7,
+    _id:Math.random()
+  };
+  packets.push(pkt);
+  simState.stats.pkts++;
+  let prog=0;
+  const baseSpd=0.035;
+  function step(){
+    prog=Math.min(1,prog+baseSpd*speedMult);
+    pkt.x=pa.x+(pb.x-pa.x)*prog;
+    pkt.y=pa.y+(pb.y-pa.y)*prog;
+    render();
+    if(prog<1){const t=setTimeout(step,16);timers.push(t);}
+    else{
+      packets=packets.filter(p=>p._id!==pkt._id);
+      render();
+      if(cb)cb();
+    }
+  }
+  step();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOGGING & UI FEEDBACK
+// ═══════════════════════════════════════════════════════════
+let logTs = 0;
+function addLog(msg,cls=''){
+  logTs++;
+  logEntries.unshift({msg,cls,ts:String(logTs).padStart(4,'0')});
+  if(logEntries.length>80)logEntries.pop();
+  if(currentTab==='log')renderPanel();
+}
+
+function setInfo(html){
+  // 1. Update the bottom text strip
+  document.getElementById('info-strip').innerHTML=html;
+
+  // 2. Sync the top phase tabs with the currently running phase
+  document.querySelectorAll('.pstep').forEach(p => {
+    const isActive = +p.dataset.pi === phaseIdx;
+    p.classList.toggle('active', isActive);
+
+    // Optional: Add a visual pulse to the active step so it's very obvious
+    if (isActive) {
+      p.style.boxShadow = `0 0 8px var(--current-accent)`;
+    } else {
+      p.style.boxShadow = 'none';
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PANEL RENDERING
+// ═══════════════════════════════════════════════════════════
+function renderPanel(){
+  const body=document.getElementById('panel-body');
+  body.innerHTML='';
+
+  const proto=currentProto;
+  const tab=currentTab;
+
+  if(tab==='log'){
+    body.innerHTML=`<div class="card"><div class="card-title">Protocol Log</div>
+      <div class="log-box">${
+        logEntries.length
+          ? logEntries.map(e=>`<div class="log-entry ${e.cls}"><span class="ts">[${e.ts}]</span>${e.msg}</div>`).join('')
+          : '<div class="log-entry">No events yet.</div>'
+      }</div></div>`;
+    return;
+  }
+
+  if(tab==='table'){
+    renderTablePanel(body);
+    return;
+  }
+
+  // Info tab
+  renderInfoPanel(body);
+}
+
+const PROTO_INFO = {
+  ospf:{
+    name:'OSPF — Open Shortest Path First',
+    rfc:'RFC 2328',
+    desc:'Link-state IGP using Dijkstra\'s SPF algorithm. All routers build an identical LSDB and independently compute the shortest path tree.',
+    phases:['Hello / Neighbor Discovery','LSA Flooding','SPF Calculation','Routing Table'],
+    pktColors:[
+      {color:'#d29922',label:'Hello (224.0.0.5)'},
+      {color:'#3fb950',label:'LSA (Router-LSA)'},
+      {color:'#58a6ff',label:'Data (shortest path)'},
+    ],
+  },
+  bgp:{
+    name:'BGP — Border Gateway Protocol',
+    rfc:'RFC 4271',
+    desc:'Path-vector EGP used between Autonomous Systems on the internet. Uses TCP port 179. Selects paths based on AS-PATH, MED, Local-Pref attributes.',
+    phases:['TCP Session (port 179)','OPEN / Capability exchange','UPDATE — prefix advertisement','KEEPALIVE / steady state'],
+    pktColors:[
+      {color:'#bc8cff',label:'OPEN message'},
+      {color:'#58a6ff',label:'UPDATE (prefix)'},
+      {color:'#3fb950',label:'KEEPALIVE'},
+      {color:'#d29922',label:'NOTIFICATION'},
+    ],
+  },
+  stp:{
+    name:'STP — Spanning Tree Protocol',
+    rfc:'IEEE 802.1D',
+    desc:'Prevents Layer-2 loops by electing a Root Bridge and blocking redundant ports. Transitions: Blocking → Listening → Learning → Forwarding.',
+    phases:['BPDU flood / Root election','Port role assignment','Topology convergence','Steady state'],
+    pktColors:[
+      {color:'#d29922',label:'BPDU (Config)'},
+      {color:'#3fb950',label:'BPDU (TCN)'},
+      {color:'#f85149',label:'Port blocked'},
+    ],
+  },
+  tcp:{
+    name:'TCP/IP — Transmission Control Protocol',
+    rfc:'RFC 793 / RFC 9293',
+    desc:'Reliable, ordered, connection-oriented transport. Three-way handshake establishes connection; four-way FIN teardown closes it. Flow and congestion control built-in.',
+    phases:['3-Way Handshake','Data Transfer','Congestion Control','4-Way FIN teardown'],
+    pktColors:[
+      {color:'#bc8cff',label:'SYN'},
+      {color:'#58a6ff',label:'SYN-ACK'},
+      {color:'#3fb950',label:'ACK'},
+      {color:'#f0883e',label:'Data segment'},
+      {color:'#f85149',label:'FIN'},
+    ],
+  },
+  arp:{
+    name:'ARP — Address Resolution Protocol',
+    rfc:'RFC 826',
+    desc:'Maps IPv4 addresses to MAC addresses on the local segment. ARP Request is broadcast (FF:FF:FF:FF:FF:FF); ARP Reply is unicast.',
+    phases:['ARP Request (broadcast)','ARP Reply (unicast)','ARP Cache update','Gratuitous ARP'],
+    pktColors:[
+      {color:'#76e3ea',label:'ARP Request (bcast)'},
+      {color:'#3fb950',label:'ARP Reply (unicast)'},
+      {color:'#d29922',label:'Gratuitous ARP'},
+    ],
+  },
+  vlan:{
+    name:'VLAN — Virtual LAN (802.1Q)',
+    rfc:'IEEE 802.1Q',
+    desc:'Logically segments a physical network. Trunk ports carry multiple VLANs with 802.1Q tags. Inter-VLAN routing requires a Layer-3 device.',
+    phases:['VLAN Tag insertion (802.1Q)','Trunk port forwarding','Access port assignment','Inter-VLAN routing'],
+    pktColors:[
+      {color:'#3fb950',label:'VLAN 10 — Sales'},
+      {color:'#58a6ff',label:'VLAN 20 — HR'},
+      {color:'#bc8cff',label:'VLAN 30 — IT'},
+      {color:'#f0883e',label:'VLAN 99 — Mgmt'},
+      {color:'#d29922',label:'Trunk (tagged)'},
+    ],
+  },
+  dhcp:{
+    name:'DHCP — Dynamic Host Configuration Protocol',
+    rfc:'RFC 2131',
+    desc:'Automatically assigns IP addresses and network parameters to client devices using the DORA process (Discover, Offer, Request, Acknowledge).',
+    phases:['Discover (Broadcast)','Offer (Unicast)','Request (Broadcast)','Acknowledge (Unicast)'],
+    pktColors:[
+      {color:'#e3b341',label:'DHCP Discover'},
+      {color:'#3fb950',label:'DHCP Offer'},
+      {color:'#58a6ff',label:'DHCP Request'},
+      {color:'#bc8cff',label:'DHCP ACK'},
+    ],
+  },
+  dns:{
+    name:'DNS — Domain Name System',
+    rfc:'RFC 1034 / 1035',
+    desc:'Translates human-readable domain names (example.com) into machine IP addresses. Demonstrates a recursive query from the client and iterative queries from the resolver.',
+    phases:['Client Query (Recursive)','Root Server Query (.)','TLD Server Query (.com)','Authoritative Query','Final Answer to Client'],
+    pktColors:[
+      {color:'#ff7b72',label:'Query (A Record)'},
+      {color:'#3fb950',label:'Response (IP or Referral)'},
+    ],
+  },
+  'arp-spoof':{
+    name:'ARP Spoofing / Poisoning (MitM)',
+    rfc:'CVE / MITRE ATT&CK T1557.002',
+    desc:'Attacker broadcasts fake Gratuitous ARPs claiming the Gateway IP maps to the attacker\'s MAC. The switch and victims update their ARP caches, routing all traffic through the attacker — a Man-in-the-Middle attack.',
+    phases:['Normal ARP table (baseline)','Attacker sends fake GARP flood','Victim ARP cache poisoned','Traffic intercepted (MitM)','Detection & mitigation: Dynamic ARP Inspection'],
+    pktColors:[
+      {color:'#3fb950',label:'Legit ARP (normal)'},
+      {color:'#f85149',label:'Fake GARP (attacker)'},
+      {color:'#d29922',label:'Intercepted traffic'},
+      {color:'#bc8cff',label:'DAI Drop (mitigation)'},
+    ],
+  },
+  'syn-flood':{
+    name:'SYN Flood — DDoS Attack',
+    rfc:'CVE / MITRE ATT&CK T1499',
+    desc:'Attacker sends thousands of TCP SYN packets from spoofed IPs. Server allocates a TCB (TCP Control Block) for each, filling the SYN queue. Legitimate connections are dropped. Mitigated by SYN Cookies.',
+    phases:['Botnet receives C&C command','SYN flood begins (spoofed IPs)','Server SYN queue fills','Legitimate traffic dropped','SYN Cookie mitigation'],
+    pktColors:[
+      {color:'#3fb950',label:'Legitimate SYN'},
+      {color:'#f85149',label:'Attack SYN (spoofed)'},
+      {color:'#d29922',label:'SYN-ACK (wasted)'},
+      {color:'#bc8cff',label:'SYN Cookie (defense)'},
+    ],
+  },
+  'mac-flood':{
+    name:'MAC Flooding — CAM Table Overflow',
+    rfc:'CVE / MITRE ATT&CK T1557',
+    desc:'Attacker sends frames with thousands of fake source MACs. The switch\'s CAM table overflows (typically 1024–8192 entries). With no matching entry, the switch fails open — acting like a hub and broadcasting every frame to all ports, exposing all traffic.',
+    phases:['Normal CAM table operation','Attacker floods fake MACs','CAM table fills to capacity','Switch fails open (acts as hub)','All traffic broadcast — attacker captures','Mitigation: Port Security'],
+    pktColors:[
+      {color:'#d29922',label:'Fake MAC frames (flood)'},
+      {color:'#f85149',label:'CAM overflow / fail-open'},
+      {color:'#ff6e40',label:'Broadcast storm'},
+      {color:'#bc8cff',label:'Port Security drop'},
+    ],
+  },
+};
+
+function renderInfoPanel(body){
+  const info=PROTO_INFO[currentProto];
+  const accent=getAccent();
+  body.innerHTML=`
+    <div class="card accent-border">
+      <div class="card-title" style="color:${accent}">${info.name}</div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:6px">${info.rfc}</div>
+      <div class="phase-desc">${info.desc}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Protocol Phases</div>
+      ${info.phases.map((p,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px;color:${i===phaseIdx?accent:'var(--text2)'};${i===info.phases.length-1?'border:none':''}">
+          <div style="width:18px;height:18px;border-radius:50%;border:1px solid ${i===phaseIdx?accent:'var(--border2)'};background:${i===phaseIdx?accent+'22':'transparent'};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0;color:${i===phaseIdx?accent:'var(--text3)'}">${i+1}</div>
+          ${p}
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Packet Types</div>
+      <div class="pkt-legend">${info.pktColors.map(p=>`
+        <div class="pkt-li">
+          <div class="pkt-dot" style="background:${p.color};box-shadow:0 0 6px ${p.color}66"></div>${p.label}
+        </div>`).join('')}
+      </div>
+    </div>
+
+    ${renderStatsCard(accent)}
+  `;
+}
+
+function renderStatsCard(accent){
+  const s=simState.stats||{};
+  return`<div class="card">
+    <div class="card-title">Simulation Stats</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Packets Sent</div><div class="stat-val" style="color:${accent}">${s.pkts||0}</div></div>
+      <div class="stat"><div class="stat-label">Neighbors</div><div class="stat-val green">${(simState.neighbors||[]).length}</div></div>
+      <div class="stat"><div class="stat-label">LSDB Entries</div><div class="stat-val blue">${(simState.lsdb||[]).length}</div></div>
+      <div class="stat"><div class="stat-label">Path Cost</div><div class="stat-val amber">${simState.spfDist&&simState.spfDist.pathCost!==undefined?simState.spfDist.pathCost:'—'}</div></div>
+    </div>
+  </div>`;
+}
+
+function renderTablePanel(body){
+  const proto=currentProto;
+  const s=simState;
+  let html='';
+
+  if(proto==='ospf'){
+    html+=`<div class="card"><div class="card-title">Neighbor Table</div>
+      ${s.neighbors.length?`<table class="data-tbl"><thead><tr><th>Router A</th><th>Router B</th><th>State</th><th>Net</th></tr></thead><tbody>
+      ${s.neighbors.map(n=>`<tr><td>${n.a}</td><td>${n.b}</td><td><span class="tag tag-g">FULL</span></td><td class="mono" style="font-size:9px;color:var(--text3)">10.0.x.0/30</td></tr>`).join('')}
+      </tbody></table>`:'<p class="empty" style="font-size:10px;color:var(--text3);font-style:italic">Run Hello phase</p>'}
+    </div>`;
+
+    if(s.lsdb.length){
+      html+=`<div class="card"><div class="card-title">Link State Database</div>
+        ${s.lsdb.map(e=>`<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--blue);font-weight:500;margin-bottom:3px">${e.router} <span style="color:var(--text3);font-size:9px">seq=0x${(e.seq||0x80000001).toString(16).toUpperCase()}</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px">${e.links.map(l=>`<span class="tag tag-g" style="font-size:8px">→${l.n}(c=${l.c})</span>`).join('')}</div>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    if(s.spfRoutingTable.length){
+      html+=`<div class="card"><div class="card-title">Routing Table</div>
+        <table class="data-tbl"><thead><tr><th>Dest</th><th>Next-Hop</th><th>Cost</th><th>Path</th></tr></thead><tbody>
+        ${s.spfRoutingTable.map(r=>`<tr class="${r.isSelected?'hl':''}"><td>${r.dst}</td><td style="color:var(--blue)">${r.nh}</td><td class="mono">${r.cost}</td><td class="mono" style="font-size:9px;color:var(--text3)">${r.path}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+    }
+
+    if(s.spfSteps.length){
+      html+=`<div class="card"><div class="card-title">SPF Dijkstra Trace</div>
+        <div class="step-list">${s.spfSteps.map(st=>`
+          <div class="step-item ${st.a}">
+            <span class="step-badge" style="background:${st.a==='visit'?'#0d2149':st.a==='relax'?'#0d4a1f':'#2a1b4a'};color:${st.a==='visit'?'#58a6ff':st.a==='relax'?'#3fb950':'#bc8cff'}">${st.a.toUpperCase()}</span>
+            <span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${st.d}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  else if(proto==='bgp'){
+    if(s.bgpPeers.length){
+      html+=`<div class="card"><div class="card-title">BGP Peer Table</div>
+        <table class="data-tbl"><thead><tr><th>Neighbor AS</th><th>Type</th><th>State</th><th>Prefixes</th></tr></thead><tbody>
+        ${s.bgpPeers.map(p=>`<tr><td>${p.as}</td><td><span class="tag ${p.type==='eBGP'?'tag-b':'tag-g'}">${p.type}</span></td><td><span class="tag tag-g">${p.state}</span></td><td class="mono">${p.pfx}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+    }
+    if(s.bgpTable.length){
+      html+=`<div class="card"><div class="card-title">BGP RIB (Best Paths)</div>
+        <table class="data-tbl"><thead><tr><th>Prefix</th><th>AS-PATH</th><th>Next-Hop</th><th>MED</th></tr></thead><tbody>
+        ${s.bgpTable.map(r=>`<tr><td class="mono">${r.pfx}</td><td class="mono" style="font-size:9px">${r.path}</td><td>${r.nh}</td><td class="mono">${r.med}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`;
+    }
+    if(!s.bgpPeers.length) html+='<div class="card"><p style="font-size:10px;color:var(--text3);font-style:italic">Run simulation to see BGP tables</p></div>';
+  }
+
+  else if(proto==='stp'){
+    html+=`<div class="card"><div class="card-title">Bridge Table</div>
+      <table class="data-tbl"><thead><tr><th>Switch</th><th>Bridge-ID</th><th>Role</th><th>State</th></tr></thead><tbody>
+      ${simState.nodes.map(n=>`<tr><td>${n.label}</td><td class="mono">${n.bid||0}</td>
+        <td><span class="tag ${n.isRoot?'tag-a':n.blocked?'tag-r':'tag-g'}">${n.isRoot?'Root':n.blocked?'Non-Root':'Non-Root'}</span></td>
+        <td><span class="tag ${n.blocked?'tag-r':n.active?'tag-g':'tag-g'}">${n.blocked?'Blocking':n.active?'Forwarding':'Init'}</span></td>
+      </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+    if(s.stpBlocked.size){
+      html+=`<div class="card"><div class="card-title">Blocked Ports</div>
+        ${[...s.stpBlocked].map(k=>{const[a,b]=k.split('-');return`<div style="font-size:10px;color:var(--red);padding:2px 0;border-bottom:1px solid var(--border)">${simState.nodes[a]?.label} ↔ ${simState.nodes[b]?.label} — BLOCKING</div>`;}).join('')}
+      </div>`;
+    }
+  }
+
+  else if(proto==='tcp'){
+    html+=`<div class="card"><div class="card-title">TCP Connection State</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">Phase</div><div style="font-size:12px;font-weight:700;color:var(--purple)">${s.tcpPhase||'CLOSED'}</div></div>
+        <div class="stat"><div class="stat-label">Seq#</div><div class="stat-val" style="color:var(--purple);font-size:14px">${s.tcpSeq||0}</div></div>
+        <div class="stat"><div class="stat-label">Ack#</div><div class="stat-val blue" style="font-size:14px">${s.tcpAck||0}</div></div>
+        <div class="stat"><div class="stat-label">Window</div><div class="stat-val green" style="font-size:14px">${s.tcpWin||0}</div></div>
+      </div>
+    </div>`;
+    if(s.tcpExchange&&s.tcpExchange.length){
+      html+=`<div class="card"><div class="card-title">Segment Exchange</div>
+        <div class="step-list">${s.tcpExchange.map(e=>`
+          <div class="step-item">
+            <span class="step-badge" style="background:${e.dir==='→'?'#0d2149':'#0d4a1f'};color:${e.dir==='→'?'#58a6ff':'#3fb950'}">${e.dir}</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text2)">${e.label} <span style="color:var(--text3)">seq=${e.seq} ack=${e.ack}</span></span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  else if(proto==='arp'){
+    html+=`<div class="card"><div class="card-title">ARP Cache</div>
+      ${s.arpTable.length?`<table class="data-tbl"><thead><tr><th>IP Address</th><th>MAC Address</th><th>Type</th></tr></thead><tbody>
+      ${s.arpTable.map(e=>`<tr><td class="mono">${e.ip}</td><td class="mono" style="font-size:9px">${e.mac}</td><td><span class="tag tag-c">${e.type}</span></td></tr>`).join('')}
+      </tbody></table>`:
+      '<p style="font-size:10px;color:var(--text3);font-style:italic">Run ARP simulation to populate cache</p>'}
+    </div>`;
+  }
+
+  else if(proto==='vlan'){
+    html+=`<div class="card"><div class="card-title">VLAN Database</div>
+      <table class="data-tbl"><thead><tr><th>VLAN</th><th>Name</th><th>Color</th><th>Hosts</th></tr></thead><tbody>
+        <tr><td class="mono">10</td><td>Sales</td><td><span class="tag tag-g">GREEN</span></td><td>PC-Sales1, PC-Sales2</td></tr>
+        <tr><td class="mono">20</td><td>HR</td><td><span class="tag tag-b">BLUE</span></td><td>PC-HR1, PC-HR2</td></tr>
+        <tr><td class="mono">30</td><td>IT</td><td><span class="tag tag-p">PURPLE</span></td><td>PC-IT1, PC-IT2</td></tr>
+        <tr><td class="mono">99</td><td>Management</td><td><span class="tag tag-a">ORANGE</span></td><td>Server</td></tr>
+      </tbody></table>
+    </div>`;
+    if(s.vlanTable.length){
+      html+=`<div class="card"><div class="card-title">802.1Q Frame Tags Seen</div>
+        <div class="step-list">${s.vlanTable.map(e=>`
+          <div class="step-item">
+            <span class="step-badge" style="background:${VLAN_COLORS[e.vlan]||'#333'}22;color:${VLAN_COLORS[e.vlan]||'#aaa'};border:1px solid ${VLAN_COLORS[e.vlan]||'#555'}44">VID=${e.vlan}</span>
+            <span style="font-size:10px;color:var(--text2);font-family:var(--mono)">${e.src} → ${e.dst}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+  }
+
+  else if(proto==='dhcp'){
+    html+=`<div class="card"><div class="card-title">DHCP Lease Table (Server)</div>
+      ${s.dhcpLeases && s.dhcpLeases.length ? `<table class="data-tbl"><thead><tr><th>IP Address</th><th>MAC Address</th><th>Status</th></tr></thead><tbody>
+      ${s.dhcpLeases.map(e=>`<tr><td class="mono" style="color:var(--green)">${e.ip}</td><td class="mono" style="font-size:9px">${e.mac}</td><td><span class="tag tag-g">${e.state}</span></td></tr>`).join('')}
+      </tbody></table>`:
+      '<p style="font-size:10px;color:var(--text3);font-style:italic">Run DORA to generate leases</p>'}
+    </div>`;
+  }
+
+  else if(proto==='dns'){
+    html+=`<div class="card"><div class="card-title">DNS Cache (Local Resolver)</div>
+      ${s.dnsCache && s.dnsCache.length ? `<table class="data-tbl"><thead><tr><th>Domain</th><th>Record</th><th>Value</th></tr></thead><tbody>
+      ${s.dnsCache.map(e=>`<tr><td>${e.domain}</td><td><span class="tag tag-b">${e.type}</span></td><td class="mono" style="color:var(--text)">${e.val}</td></tr>`).join('')}
+      </tbody></table>`:
+      '<p style="font-size:10px;color:var(--text3);font-style:italic">Run resolution to populate cache</p>'}
+    </div>`;
+  }
+
+  else if(proto==='arp-spoof'){
+    html+=`<div class="card accent-border" style="--accent:#f85149;border-left-color:#f85149">
+      <div class="card-title" style="color:#f85149">ARP Cache — ${s.arpPoisoned?'☠ POISONED':'Normal'}</div>
+      <table class="data-tbl"><thead><tr><th>IP</th><th>MAC</th><th>Status</th></tr></thead><tbody>
+      ${(s.arpSpoofTable||[]).map(e=>`<tr><td class="mono">${e.ip}</td><td class="mono" style="font-size:9px;color:${e.fake?'#f85149':e.legit?'#3fb950':'var(--text2)'}">${e.mac}</td><td><span class="tag ${e.fake?'tag-r':e.legit?'tag-g':'tag-b'}">${e.fake?'FAKE':'LEGIT'}</span></td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--text3);font-style:italic">Run simulation first</td></tr>'}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Attack Progress</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">GARPs Sent</div><div class="stat-val" style="color:#f85149">${s.stats.pkts||0}</div></div>
+        <div class="stat"><div class="stat-label">Cache Poisoned</div><div class="stat-val" style="color:${s.arpPoisoned?'#f85149':'#545d68'}">${s.arpPoisoned?'YES':'NO'}</div></div>
+      </div>
+    </div>`;
+  }
+
+  else if(proto==='syn-flood'){
+    const queue = s.synQueue||[];
+    const max = s.synQueueMax||8;
+    html+=`<div class="card accent-border" style="--accent:#ff6e40;border-left-color:#ff6e40">
+      <div class="card-title" style="color:#ff6e40">TCP SYN Queue — ${queue.length}/${max} slots used</div>
+      <div class="cam-bar-wrap">
+        <div class="cam-bar-bg"><div class="cam-bar-fill" style="width:${Math.round(queue.length/max*100)}%;background:${queue.length>=max?'#f85149':queue.length>max*0.7?'#d29922':'#3fb950'}">${Math.round(queue.length/max*100)}%</div></div>
+      </div>
+      <div class="syn-queue" style="margin-top:8px">
+        ${Array.from({length:max}).map((_,i)=>{
+          const slot=queue[i];
+          if(!slot) return `<div class="syn-slot empty">empty</div>`;
+          return `<div class="syn-slot ${slot.attack?'used':'legit'}">${slot.attack?`ATK ${slot.src}`:`LEGIT ${slot.src}`}</div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Attack Stats</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">SYNs Received</div><div class="stat-val" style="color:#ff6e40">${s.stats.pkts||0}</div></div>
+        <div class="stat"><div class="stat-label">Legit Dropped</div><div class="stat-val" style="color:${s.synDropping?'#f85149':'#545d68'}">${s.synDropping?'YES':'NO'}</div></div>
+      </div>
+    </div>`;
+  }
+
+  else if(proto==='mac-flood'){
+    const pct = Math.round(s.camFillPct||0);
+    html+=`<div class="card accent-border" style="--accent:#d29922;border-left-color:#d29922">
+      <div class="card-title" style="color:#d29922">CAM Table — ${pct}% Full</div>
+      <div class="cam-bar-wrap">
+        <div class="cam-bar-bg"><div class="cam-bar-fill" style="width:${pct}%;background:${pct>=100?'#f85149':pct>70?'#d29922':'#3fb950'}">${pct}%</div></div>
+        <div style="font-size:9px;color:var(--text3);margin-top:3px">Capacity: 1024 entries. Overflow → fail-open (hub mode)</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">CAM Table (sample entries)</div>
+      <table class="data-tbl"><thead><tr><th>MAC</th><th>Port</th><th>Age</th></tr></thead><tbody>
+      ${(s.camTable||[]).slice(0,6).map(e=>`<tr><td class="mono" style="font-size:9px;color:${e.fake?'#d29922':'var(--text2)'}">${e.mac}</td><td class="mono">${e.port}</td><td class="mono">${e.age}s</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--text3);font-style:italic">Run simulation first</td></tr>'}
+      </tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Switch Mode</div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${s.camFull?'#f85149':'#3fb950'};margin-bottom:4px">${s.camFull?'☠ FAIL-OPEN (HUB)':'✓ NORMAL'}</div>
+      <div style="font-size:10px;color:var(--text3)">${s.camFull?'All frames broadcast to every port — attacker captures all traffic':'Forwarding based on CAM table entries'}</div>
+    </div>`;
+  }
+
+  body.innerHTML=html||'<div class="card"><p style="font-size:10px;color:var(--text3)">Run simulation to see tables.</p></div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROTOCOL SIMULATIONS
+// ═══════════════════════════════════════════════════════════
+
+// ── OSPF ───────────────────────────────────────────────────
+function runOSPF(){
+  const nodes=simState.nodes, links=getTopo().links;
+  let li=0;
+
+  setInfo(`<span class="accent">Phase 1</span> — Hello packets multicast to 224.0.0.5`);
+  addLog('[OSPF] Starting Hello phase — 224.0.0.5 multicast','log-green');
+  phaseIdx=0; renderPanel();
+
+  function sendHellos(){
+    if(li>=links.length){
+      const sorted=[...nodes].sort((a,b)=>b.rid-a.rid);
+      simState.drId=sorted[0].id; simState.bdrId=sorted[1].id;
+      nodes[simState.drId].isDR=true; nodes[simState.bdrId].isBDR=true;
+      nodes.forEach(n=>{n.active=true;n.state='active';});
+      addLog(`[DR Election] DR=${nodes[simState.drId].label} RID=${nodes[simState.drId].rid} | BDR=${nodes[simState.bdrId].label}`,'log-amber');
+      setInfo(`<span class="accent">Phase 1 complete</span> — DR: <span class="accent">${nodes[simState.drId].label}</span> BDR: <span style="color:#3fb950">${nodes[simState.bdrId].label}</span> — proceeding to LSA flooding`);
+      render();
+      later(()=>{phaseIdx=1;floodLSA();},600);
+      return;
+    }
+    const l=links[li++];
+    nodes[l.a].active=true; nodes[l.b].active=true;
+    l.active=true;
+    simState.neighbors.push({a:nodes[l.a].label,b:nodes[l.b].label});
+    simState.stats.hellos++;
+    addLog(`[Hello] ${nodes[l.a].label} ↔ ${nodes[l.b].label} — state=FULL`,'log-green');
+    animPkt(l.a,l.b,{color:'#d29922',label:'HLO',glow:true},()=>{later(sendHellos,120);});
+    if(currentTab==='info'||currentTab==='table') renderPanel();
+  }
+  sendHellos();
+}
+
+function floodLSA(){
+  const nodes=simState.nodes, links=getTopo().links;
+  let seq=0x80000001, ni=0;
+  addLog('[OSPF] LSA Flooding — Router-LSAs propagating','log-green');
+  setInfo(`<span class="accent">Phase 2</span> — LSA flooding: each router originates a Router-LSA`);
+
+  function nextRouter(){
+    if(ni>=nodes.length){
+      addLog('[OSPF] LSDB synchronized across all routers','log-green');
+      later(()=>{phaseIdx=2;runSPF();},400);
+      return;
+    }
+    const n=nodes[ni++];
+    const lsaLinks=links.filter(l=>l.a===n.id||l.b===n.id).map(l=>({
+      n:nodes[l.a===n.id?l.b:l.a].label, c:l.cost
+    }));
+    simState.lsdb.push({router:n.label,seq:seq++,links:lsaLinks});
+    simState.stats.lsas++;
+    addLog(`[LSA] ${n.label} → seq=0x${(seq-1).toString(16).toUpperCase()} links=[${lsaLinks.map(l=>l.n+'('+l.c+')').join(',')}]`,'log-green');
+    const nbs=links.filter(l=>l.a===n.id||l.b===n.id).map(l=>l.a===n.id?l.b:l.a);
+    let done=0;
+    if(!nbs.length){later(nextRouter,200);return;}
+    nbs.forEach((nb,j)=>{
+      later(()=>animPkt(n.id,nb,{color:'#3fb950',label:'LSA',r:8,glow:true},()=>{done++;if(done===nbs.length)later(nextRouter,150);}),j*100);
+    });
+    if(currentTab!=='log') renderPanel();
+  }
+  nextRouter();
+}
+
+function runSPF(){
+  const nodes=simState.nodes, links=getTopo().links;
+  const srcId=+document.getElementById('sel-src').value;
+  const dstId=+document.getElementById('sel-dst').value;
+  addLog(`[SPF] Running Dijkstra from ${nodes[srcId].label} → ${nodes[dstId].label}`,'log-blue');
+  setInfo(`<span class="accent">Phase 3</span> — SPF: Dijkstra from <span class="accent">${nodes[srcId].label}</span> → <span class="accent">${nodes[dstId].label}</span>`);
+
+  const n=nodes.length;
+  const dist=Array(n).fill(Infinity), prev=Array(n).fill(-1), vis=Array(n).fill(false);
+  dist[srcId]=0;
+  simState.spfSteps=[];
+  simState.spfSteps.push({a:'init',d:`dist[${nodes[srcId].label}]=0, all others=∞`});
+  const pq=[[0,srcId]];
+
+  while(pq.length){
+    pq.sort((a,b)=>a[0]-b[0]);
+    const[d,u]=pq.shift();
+    if(vis[u])continue; vis[u]=true;
+    simState.spfSteps.push({a:'visit',d:`Visit ${nodes[u].label} dist=${d}`});
+    links.filter(l=>l.a===u||l.b===u).forEach(l=>{
+      const v=l.a===u?l.b:l.a;
+      if(vis[v])return;
+      const alt=d+l.cost;
+      if(alt<dist[v]){
+        dist[v]=alt;prev[v]=u;pq.push([alt,v]);
+        simState.spfSteps.push({a:'relax',d:`${nodes[u].label}→${nodes[v].label} dist=${alt}`});
+      }
+    });
+  }
+
+  const path=[];let c=dstId;while(c!==-1){path.unshift(c);c=prev[c];}
+  simState.spfPath=path;
+  simState.spfPathEdges=new Set();
+  for(let i=0;i<path.length-1;i++) simState.spfPathEdges.add([path[i],path[i+1]].sort().join('-'));
+  simState.spfDist={pathCost:dist[dstId]};
+  simState.stats.convergence=dist[dstId];
+
+  simState.spfRoutingTable=[];
+  nodes.forEach(nd=>{
+    if(nd.id===srcId||dist[nd.id]===Infinity)return;
+    const fp=[];let cc=nd.id;while(cc!==-1){fp.unshift(cc);cc=prev[cc];}
+    const nh=fp.length>1?nodes[fp[1]].label:'—';
+    simState.spfRoutingTable.push({dst:nd.label,nh,cost:dist[nd.id],path:fp.map(i=>nodes[i].label).join('→'),isSelected:nd.id===dstId});
+  });
+
+  const label=path.map(i=>nodes[i].label).join(' → ');
+  addLog(`[SPF] Shortest path: ${label} cost=${dist[dstId]}`,'log-blue');
+  simState.spfSteps.push({a:'done',d:`${label} (cost=${dist[dstId]})`});
+  setInfo(`<span class="accent">Phase 3 complete</span> — Path: <span class="accent">${label}</span> cost=<span class="accent">${dist[dstId]}</span>`);
+  render();
+  renderPanel();
+
+  phaseIdx=3;
+  let pi=0;
+  function nextHop(){
+    if(pi>=path.length-1){running=false;document.getElementById('btn-run').disabled=false;return;}
+    animPkt(path[pi],path[pi+1],{color:'#58a6ff',label:'DATA',glow:true,r:9},()=>{later(nextHop,80);});
+    pi++;
+  }
+  later(nextHop,300);
+}
+
+// ── BGP ────────────────────────────────────────────────────
+function runBGP(){
+  const nodes=simState.nodes, links=getTopo().links;
+  phaseIdx=0;
+  addLog('[BGP] Initiating TCP sessions on port 179','log-blue');
+  setInfo(`<span style="color:#58a6ff">BGP Phase 1</span> — Establishing TCP sessions (port 179)`);
+
+  let li=0;
+  function tcpSession(){
+    if(li>=links.length){later(()=>{phaseIdx=1;sendOpen();},300);return;}
+    const l=links[li++];
+    l.active=true; nodes[l.a].active=true; nodes[l.b].active=true;
+    addLog(`[BGP] TCP SYN: ${nodes[l.a].label} → ${nodes[l.b].label} :179`,'log-blue');
+    animPkt(l.a,l.b,{color:'#bc8cff',label:'SYN',r:7},()=>
+      animPkt(l.b,l.a,{color:'#58a6ff',label:'S-A',r:7},()=>
+        animPkt(l.a,l.b,{color:'#3fb950',label:'ACK',r:7},()=>{later(tcpSession,80);})));
+  }
+  tcpSession();
+
+  function sendOpen(){
+    addLog('[BGP] Sending OPEN messages — exchanging capabilities','log-blue');
+    setInfo(`<span style="color:#58a6ff">BGP Phase 2</span> — OPEN messages: ASN, Hold-Time, Router-ID`);
+    let li2=0;
+    function openMsg(){
+      if(li2>=links.length){later(()=>{phaseIdx=2;sendUpdates();},300);return;}
+      const l=links[li2++];
+      const type=l.ebgp?'eBGP':'iBGP';
+      simState.bgpPeers.push({as:nodes[l.b].label,type,state:'Established',pfx:Math.floor(Math.random()*20)+5});
+      addLog(`[BGP] OPEN: ${nodes[l.a].label}→${nodes[l.b].label} [${type}] Hold=90s`,'log-blue');
+      animPkt(l.a,l.b,{color:'#bc8cff',label:'OPN',r:8,glow:true},()=>
+        animPkt(l.b,l.a,{color:'#bc8cff',label:'OPN',r:8},()=>{later(openMsg,100);}));
+      renderPanel();
+    }
+    openMsg();
+  }
+
+  function sendUpdates(){
+    addLog('[BGP] Advertising prefixes via UPDATE messages','log-blue');
+    setInfo(`<span style="color:#58a6ff">BGP Phase 3</span> — UPDATE: prefix advertisement with AS-PATH`);
+    const prefixes=['10.1.0.0/16','172.16.0.0/12','192.168.100.0/24','10.20.0.0/14'];
+    let ui=0;
+    function nextUpdate(){
+      if(ui>=links.length){later(()=>{phaseIdx=3;keepalives();},300);return;}
+      const l=links[ui++];
+      const pfx=prefixes[ui%prefixes.length];
+      simState.bgpTable.push({pfx,path:nodes[l.a].asn+' '+nodes[l.b].asn,nh:nodes[l.b].label,med:l.med||100});
+      addLog(`[BGP] UPDATE: ${pfx} AS-PATH=[${nodes[l.a].asn},${nodes[l.b].asn}] MED=${l.med}`,'log-blue');
+      animPkt(l.a,l.b,{color:'#58a6ff',label:'UPD',r:8,glow:true},()=>{later(nextUpdate,100);});
+      renderPanel();
+    }
+    nextUpdate();
+  }
+
+  function keepalives(){
+    addLog('[BGP] Steady state — KEEPALIVE every 30s','log-blue');
+    setInfo(`<span style="color:#3fb950">BGP Established</span> — ${simState.bgpPeers.length} peers active, ${simState.bgpTable.length} prefixes in RIB`);
+    nodes.forEach(n=>n.active=true);
+    let ki=0;
+    function nextKA(){
+      if(ki>=links.length){running=false;document.getElementById('btn-run').disabled=false;render();return;}
+      const l=links[ki++];
+      animPkt(l.a,l.b,{color:'#3fb950',label:'KA',r:6},()=>{later(nextKA,80);});
+    }
+    nextKA(); render(); renderPanel();
+  }
+}
+
+// ── STP ────────────────────────────────────────────────────
+function runSTP(){
+  const nodes=simState.nodes, links=getTopo().links;
+  phaseIdx=0;
+  addLog('[STP] Starting 802.1D — flooding BPDUs','log-amber');
+  setInfo(`<span style="color:#d29922">STP Phase 1</span> — BPDU flood: all switches send Configuration BPDUs`);
+
+  let li=0;
+  function floodBPDU(){
+    if(li>=links.length){later(()=>{phaseIdx=1;electRoot();},300);return;}
+    const l=links[li++];
+    l.active=true;
+    addLog(`[BPDU] ${nodes[l.a].label}↔${nodes[l.b].label} BID=${nodes[l.a].bid}`,'log-amber');
+    animPkt(l.a,l.b,{color:'#d29922',label:'BPDU',r:8,glow:true},()=>
+      animPkt(l.b,l.a,{color:'#d29922',label:'BPDU',r:8},()=>{later(floodBPDU,100);}));
+  }
+  floodBPDU();
+
+  function electRoot(){
+    const sorted=[...nodes].sort((a,b)=>a.bid-b.bid);
+    const root=sorted[0];
+    simState.stpRoot=root.id;
+    root.isRoot=true; root.active=true;
+    addLog(`[STP] Root Bridge elected: ${root.label} (BID=${root.bid}) — lowest BID wins`,'log-amber');
+    setInfo(`<span style="color:#d29922">STP Phase 2</span> — Root Bridge: <span style="color:#d29922">${root.label}</span> (BID=${root.bid}). Computing port roles...`);
+    phaseIdx=2;
+    later(()=>blockPorts(),400);
+  }
+
+  function blockPorts(){
+    const toBlock=[];
+    links.forEach(l=>{
+      const a=nodes[l.a], b=nodes[l.b];
+      if(!a.isRoot && !b.isRoot && l.cost===19){
+        const key=[l.a,l.b].sort().join('-');
+        if((l.a+l.b)%3===0) toBlock.push(key);
+      }
+    });
+    toBlock.forEach(k=>simState.stpBlocked.add(k));
+
+    simState.stpBlocked.forEach(k=>{
+      const[a,b]=k.split('-').map(Number);
+      if(!nodes[a].isRoot) nodes[a].blocked=true;
+    });
+
+    addLog(`[STP] ${simState.stpBlocked.size} port(s) blocked to eliminate loops`,'log-amber');
+    setInfo(`<span style="color:#d29922">STP Phase 3</span> — ${simState.stpBlocked.size} redundant ports blocked. Remaining ports: Forwarding.`);
+    phaseIdx=3;
+
+    nodes.forEach(n=>{if(!n.blocked)n.active=true;});
+    render(); renderPanel();
+
+    later(()=>{
+      addLog('[STP] TCN (Topology Change Notification) sent to Root','log-amber');
+      const root=simState.stpRoot;
+      nodes.filter(n=>!n.isRoot).forEach(n=>{
+        animPkt(n.id,root,{color:'#3fb950',label:'TCN',r:7},()=>{});
+      });
+      later(()=>{
+        running=false;document.getElementById('btn-run').disabled=false;
+        setInfo(`<span style="color:#3fb950">STP Converged</span> — Root: ${nodes[simState.stpRoot].label}, ${simState.stpBlocked.size} ports blocked, topology stable`);
+      },1000);
+    },500);
+  }
+}
+
+// ── TCP ────────────────────────────────────────────────────
+function runTCP(){
+  const cl=0,sv=1;
+  simState.tcpExchange=[];
+  simState.tcpWin=65535;
+  let seq=Math.floor(Math.random()*1000)+100;
+  let sseq=Math.floor(Math.random()*2000)+500;
+  phaseIdx=0;
+
+  const steps=[
+    ()=>{
+      simState.tcpPhase='SYN_SENT'; simState.tcpSeq=seq;
+      addLog(`[TCP] → SYN seq=${seq} (Client initiates connection)`,'log-purple');
+      setInfo(`<span style="color:#bc8cff">TCP Phase 1</span> — 3-Way Handshake: SYN seq=${seq}`);
+      simState.tcpExchange.push({dir:'→',label:'SYN',seq,ack:0});
+      simState.nodes[cl].active=true;
+      animPkt(cl,sv,{color:'#bc8cff',label:'SYN',r:9,glow:true},()=>later(()=>nextStep(),200));
+      renderPanel();
+    },
+    ()=>{
+      simState.tcpPhase='SYN_RCVD'; simState.tcpAck=seq+1;
+      addLog(`[TCP] ← SYN-ACK seq=${sseq} ack=${seq+1} (Server responds)`,'log-blue');
+      simState.tcpExchange.push({dir:'←',label:'SYN-ACK',seq:sseq,ack:seq+1});
+      simState.nodes[sv].active=true;
+      animPkt(sv,cl,{color:'#58a6ff',label:'S-A',r:9,glow:true},()=>later(()=>nextStep(),200));
+      renderPanel();
+    },
+    ()=>{
+      simState.tcpPhase='ESTABLISHED'; seq++; sseq++;
+      simState.tcpSeq=seq; simState.tcpAck=sseq;
+      addLog(`[TCP] → ACK seq=${seq} ack=${sseq} — Connection ESTABLISHED`,'log-green');
+      simState.tcpExchange.push({dir:'→',label:'ACK',seq,ack:sseq});
+      animPkt(cl,sv,{color:'#3fb950',label:'ACK',r:8},()=>later(()=>nextStep(),300));
+      setInfo(`<span style="color:#3fb950">Handshake Complete</span> — ESTABLISHED. Transferring data...`);
+      renderPanel();
+    },
+    ()=>{
+      phaseIdx=1;
+      addLog('[TCP] → DATA [PSH,ACK] HTTP GET /index.html (1460 bytes)','log-orange');
+      simState.tcpExchange.push({dir:'→',label:'DATA[PSH,ACK]',seq,ack:sseq});
+      animPkt(cl,sv,{color:'#f0883e',label:'DATA',r:10,glow:true},()=>later(()=>nextStep(),150));
+      setInfo(`<span style="color:#f0883e">TCP Phase 2</span> — Data transfer: HTTP GET in-flight`);
+    },
+    ()=>{
+      seq+=1460;
+      addLog(`[TCP] ← ACK seq=${sseq} ack=${seq} (Server ACKs data)`,'log-green');
+      simState.tcpExchange.push({dir:'←',label:'ACK',seq:sseq,ack:seq});
+      simState.tcpSeq=seq;
+      animPkt(sv,cl,{color:'#3fb950',label:'ACK',r:8},()=>later(()=>nextStep(),200));
+      renderPanel();
+    },
+    ()=>{
+      addLog('[TCP] ← DATA [PSH,ACK] HTTP 200 OK (response body)','log-orange');
+      simState.tcpExchange.push({dir:'←',label:'HTTP 200 OK',seq:sseq,ack:seq});
+      animPkt(sv,cl,{color:'#f0883e',label:'RES',r:10,glow:true},()=>later(()=>nextStep(),150));
+      phaseIdx=2;
+      setInfo(`<span style="color:#f0883e">TCP Phase 2</span> — HTTP Response inbound. Congestion window expanding.`);
+    },
+    ()=>{
+      sseq+=2920;
+      addLog(`[TCP] → ACK seq=${seq} ack=${sseq} — Cumulative ACK`,'log-green');
+      simState.tcpExchange.push({dir:'→',label:'ACK',seq,ack:sseq});
+      simState.tcpAck=sseq;
+      animPkt(cl,sv,{color:'#3fb950',label:'ACK',r:8},()=>later(()=>nextStep(),300));
+      renderPanel();
+    },
+    ()=>{
+      phaseIdx=3;
+      addLog('[TCP] → FIN seq='+seq+' (Client initiates close)','log-red');
+      simState.tcpExchange.push({dir:'→',label:'FIN',seq,ack:sseq});
+      simState.tcpPhase='FIN_WAIT_1';
+      animPkt(cl,sv,{color:'#f85149',label:'FIN',r:8,glow:true},()=>later(()=>nextStep(),200));
+      setInfo(`<span style="color:#f85149">TCP Phase 4</span> — 4-Way FIN: initiating graceful teardown`);
+      renderPanel();
+    },
+    ()=>{
+      addLog('[TCP] ← ACK (Server ACKs FIN)','log-green');
+      simState.tcpExchange.push({dir:'←',label:'ACK',seq:sseq,ack:seq+1});
+      simState.tcpPhase='FIN_WAIT_2';
+      animPkt(sv,cl,{color:'#3fb950',label:'ACK',r:7},()=>later(()=>nextStep(),200));
+    },
+    ()=>{
+      addLog('[TCP] ← FIN (Server closes its side)','log-red');
+      simState.tcpExchange.push({dir:'←',label:'FIN',seq:sseq,ack:seq+1});
+      simState.tcpPhase='TIME_WAIT';
+      animPkt(sv,cl,{color:'#f85149',label:'FIN',r:8},()=>later(()=>nextStep(),200));
+    },
+    ()=>{
+      addLog('[TCP] → ACK — Connection CLOSED. TIME_WAIT 2MSL','log-purple');
+      simState.tcpExchange.push({dir:'→',label:'ACK',seq:seq+1,ack:sseq+1});
+      simState.tcpPhase='CLOSED';
+      animPkt(cl,sv,{color:'#3fb950',label:'ACK',r:7},()=>{
+        later(()=>{
+          simState.nodes.forEach(n=>{n.active=false;});
+          render(); renderPanel();
+          running=false; document.getElementById('btn-run').disabled=false;
+          setInfo(`<span style="color:#3fb950">TCP CLOSED</span> — Full lifecycle complete: Handshake → Data → FIN teardown`);
+        },400);
+      });
+    },
+  ];
+
+  let si=0;
+  function nextStep(){ if(si<steps.length) steps[si++](); }
+  nextStep();
+}
+
+// ── ARP ────────────────────────────────────────────────────
+function runARP(){
+  const nodes=simState.nodes;
+  phaseIdx=0;
+  const hostA=nodes[0], sw=nodes[3], targets=[nodes[1],nodes[2],nodes[4]];
+
+  addLog('[ARP] Host-A needs MAC for 192.168.1.20 — sending ARP Request','log-cyan');
+  setInfo(`<span style="color:#76e3ea">ARP Phase 1</span> — Broadcast: "Who has 192.168.1.20? Tell 192.168.1.10"`);
+
+  hostA.active=true;
+
+  animPkt(0,3,{color:'#76e3ea',label:'REQ',r:9,glow:true},()=>{
+    sw.active=true;
+    addLog('[ARP] Switch floods on all ports (broadcast FF:FF:FF:FF:FF:FF)','log-cyan');
+    let done=0;
+    targets.forEach((t,i)=>{
+      later(()=>{
+        animPkt(3,t.id,{color:'#76e3ea',label:'REQ',r:8},()=>{
+          addLog(`[ARP] ${t.label} receives broadcast — ${t.id===1?'match! sending Reply':'no match, discarded'}`,'log-cyan');
+          done++;
+          if(done===targets.length) later(()=>arpReply(),200);
+        });
+      },i*180);
+    });
+  });
+
+  function arpReply(){
+    phaseIdx=1;
+    addLog('[ARP] Host-B replies unicast: "192.168.1.20 is at DD:EE:FF:44:55:66"','log-green');
+    setInfo(`<span style="color:#76e3ea">ARP Phase 2</span> — Unicast Reply: Host-B → Host-A`);
+    nodes[1].active=true;
+    animPkt(1,3,{color:'#3fb950',label:'RPY',r:9,glow:true},()=>{
+      animPkt(3,0,{color:'#3fb950',label:'RPY',r:9},()=>{
+        later(()=>updateCache(),200);
+      });
+    });
+  }
+
+  function updateCache(){
+    phaseIdx=2;
+    simState.arpTable=[
+      {ip:'192.168.1.20',mac:'DD:EE:FF:44:55:66',type:'Dynamic'},
+      {ip:'192.168.1.1', mac:'00:11:22:33:44:55',type:'Dynamic'},
+      {ip:'192.168.1.10',mac:'AA:BB:CC:11:22:33',type:'Static'},
+    ];
+    addLog('[ARP] Cache updated: 192.168.1.20 → DD:EE:FF:44:55:66 (TTL=240s)','log-green');
+    setInfo(`<span style="color:#3fb950">ARP Cache Updated</span> — Host-A can now communicate with Host-B directly`);
+    renderPanel();
+
+    later(()=>{
+      phaseIdx=3;
+      addLog('[ARP] Gratuitous ARP from GW (192.168.1.1) — announces itself','log-amber');
+      setInfo(`<span style="color:#d29922">ARP Phase 4</span> — Gratuitous ARP from Gateway (used for failover/announcement)`);
+      animPkt(4,3,{color:'#d29922',label:'GARP',r:8,glow:true},()=>{
+        [0,1,2].forEach((id,i)=>later(()=>animPkt(3,id,{color:'#d29922',label:'GARP',r:7},()=>{}),i*120));
+        later(()=>{
+          running=false;document.getElementById('btn-run').disabled=false;
+          setInfo(`<span style="color:#3fb950">ARP Complete</span> — Request → Reply → Cache update → Gratuitous ARP demonstrated`);
+        },800);
+      });
+    },600);
+  }
+}
+
+// ── VLAN ────────────────────────────────────────────────────
+function runVLAN(){
+  const nodes=simState.nodes;
+  phaseIdx=0;
+  addLog('[VLAN] Demonstrating 802.1Q VLAN tagging','log-orange');
+  setInfo(`<span style="color:#f0883e">VLAN Phase 1</span> — 802.1Q tag insertion on trunk ports`);
+
+  getTopo().links.filter(l=>l.trunk).forEach(l=>{l.active=true;l.state='active';});
+  getTopo().links.filter(l=>l.vlan).forEach(l=>{l.active=true;});
+  nodes[0].active=true; nodes[1].active=true; nodes[2].active=true;
+  render();
+
+  const trunkPairs=[[0,1],[0,2]];
+  let ti=0;
+  function nextTrunk(){
+    if(ti>=trunkPairs.length){later(()=>{phaseIdx=1;accessPorts();},400);return;}
+    const[a,b]=trunkPairs[ti++];
+    addLog(`[802.1Q] Trunk ${nodes[a].label}↔${nodes[b].label}: carrying VLANs 10,20,30,99`,'log-amber');
+    simState.vlanTable.push({vlan:'10,20,30',src:nodes[a].label,dst:nodes[b].label});
+    animPkt(a,b,{color:'#d29922',label:'TAG',r:9,glow:true},()=>{later(nextTrunk,200);});
+    renderPanel();
+  }
+  nextTrunk();
+
+  function accessPorts(){
+    phaseIdx=1;
+    addLog('[VLAN] Access ports: untagging frames per VLAN assignment','log-orange');
+    setInfo(`<span style="color:#f0883e">VLAN Phase 2</span> — Access port frame delivery (tag stripped)`);
+
+    const vlan10=[3,4],vlan20=[5,7],vlan30=[6,8],vlan99=[9];
+    const groups=[
+      {vlan:10,color:'#3fb950',hosts:vlan10,sw:1},
+      {vlan:20,color:'#58a6ff',hosts:vlan20,sw:1},
+      {vlan:30,color:'#bc8cff',hosts:vlan30,sw:2},
+      {vlan:99,color:'#f0883e',hosts:vlan99,sw:0},
+    ];
+
+    let gi=0;
+    function nextGroup(){
+      if(gi>=groups.length){later(()=>{phaseIdx=2;interVlan();},300);return;}
+      const g=groups[gi++];
+      addLog(`[VLAN ${g.vlan}] Forwarding to access ports: ${g.hosts.map(h=>nodes[h].label).join(', ')}`,'log-orange');
+      g.hosts.forEach((h,i)=>{
+        later(()=>{
+          nodes[h].active=true;
+          simState.vlanTable.push({vlan:g.vlan,src:nodes[g.sw].label,dst:nodes[h].label});
+          animPkt(g.sw,h,{color:g.color,label:`V${g.vlan}`,r:8,glow:true},()=>{});
+        },i*150);
+      });
+      later(nextGroup,g.hosts.length*150+200);
+      if(currentTab!=='log')renderPanel();
+    }
+    nextGroup();
+  }
+
+  function interVlan(){
+    phaseIdx=3;
+    addLog('[VLAN] Inter-VLAN routing: traffic must traverse L3 (router/SVI)','log-orange');
+    setInfo(`<span style="color:#f0883e">VLAN Phase 4</span> — Inter-VLAN routing via Core-SW L3 (Router-on-a-Stick)`);
+    animPkt(3,1,{color:'#3fb950',label:'V10',r:8},()=>
+      animPkt(1,0,{color:'#d29922',label:'TAG',r:8,glow:true},()=>
+        animPkt(0,2,{color:'#d29922',label:'TAG',r:8},()=>
+          animPkt(2,7,{color:'#58a6ff',label:'V20',r:8,glow:true},()=>{
+            addLog('[VLAN] Inter-VLAN: VLAN10(Sales)→VLAN20(HR) via L3 routing on Core-SW','log-orange');
+            later(()=>{
+              running=false;document.getElementById('btn-run').disabled=false;
+              setInfo(`<span style="color:#3fb950">VLAN Complete</span> — Trunk tagging, access port delivery, and inter-VLAN routing demonstrated`);
+            },300);
+          }))));
+  }
+}
+
+// ── DHCP ───────────────────────────────────────────────────
+function runDHCP(){
+  const nodes = simState.nodes;
+  simState.dhcpLeases = [];
+  phaseIdx = 0;
+  
+  addLog('[DHCP] Client initializing DORA process','log-amber');
+  setInfo(`<span style="color:#e3b341">DHCP Phase 1</span> — DISCOVER: Client broadcasts to 255.255.255.255`);
+  
+  nodes[0].active = true;
+
+  animPkt(0,1,{color:'#e3b341',label:'DSC',r:9,glow:true},()=>{
+    nodes[1].active = true;
+    animPkt(1,2,{color:'#e3b341',label:'DSC',r:9},()=>{
+      phaseIdx = 1;
+      addLog('[DHCP] Server receives Discover, proposing 10.0.0.100','log-green');
+      setInfo(`<span style="color:#3fb950">DHCP Phase 2</span> — OFFER: Server proposes IP 10.0.0.100`);
+      nodes[2].active = true;
+      
+      animPkt(2,1,{color:'#3fb950',label:'OFR',r:9,glow:true},()=>{
+        animPkt(1,0,{color:'#3fb950',label:'OFR',r:9},()=>{
+          phaseIdx = 2;
+          addLog('[DHCP] Client accepts offer, broadcasts Request for 10.0.0.100','log-blue');
+          setInfo(`<span style="color:#58a6ff">DHCP Phase 3</span> — REQUEST: Client formally requests the offered IP`);
+          
+          animPkt(0,1,{color:'#58a6ff',label:'REQ',r:9,glow:true},()=>{
+            animPkt(1,2,{color:'#58a6ff',label:'REQ',r:9},()=>{
+              phaseIdx = 3;
+              addLog('[DHCP] Server commits lease, sends ACK','log-purple');
+              setInfo(`<span style="color:#bc8cff">DHCP Phase 4</span> — ACKNOWLEDGE: Server confirms the IP lease`);
+              
+              animPkt(2,1,{color:'#bc8cff',label:'ACK',r:9,glow:true},()=>{
+                animPkt(1,0,{color:'#bc8cff',label:'ACK',r:9},()=>{
+                  simState.dhcpLeases.push({ip:'10.0.0.100', mac:'AA:BB', state:'BOUND'});
+                  nodes[0].sub = '10.0.0.100\nMAC: AA:BB'; 
+                  render();
+                  renderPanel();
+                  addLog('[DHCP] Process complete. Client IP is configured.','log-green');
+                  running = false; document.getElementById('btn-run').disabled = false;
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+// ── DNS ────────────────────────────────────────────────────
+function runDNS(){
+  const nodes = simState.nodes;
+  simState.dnsCache = [];
+  phaseIdx = 0;
+
+  addLog('[DNS] Client requesting A record for example.com','log-red');
+  setInfo(`<span style="color:#ff7b72">DNS Phase 1</span> — Client sends recursive query to Local Resolver`);
+  nodes[0].active = true;
+
+  animPkt(0,1,{color:'#ff7b72',label:'QRY',r:8,glow:true},()=>{
+    phaseIdx = 1;
+    nodes[1].active = true;
+    addLog('[DNS] Resolver cache miss. Querying Root Server (.)','log-red');
+    setInfo(`<span style="color:#ff7b72">DNS Phase 2</span> — Iterative Query to Root Server`);
+    
+    animPkt(1,2,{color:'#ff7b72',label:'QRY',r:8},()=>{
+      nodes[2].active = true;
+      animPkt(2,1,{color:'#3fb950',label:'REF',r:8},()=>{
+        phaseIdx = 2;
+        addLog('[DNS] Root refers to TLD (.com) servers','log-green');
+        setInfo(`<span style="color:#ff7b72">DNS Phase 3</span> — Iterative Query to TLD Server (.com)`);
+        
+        animPkt(1,3,{color:'#ff7b72',label:'QRY',r:8},()=>{
+          nodes[3].active = true;
+          animPkt(3,1,{color:'#3fb950',label:'REF',r:8},()=>{
+            phaseIdx = 3;
+            addLog('[DNS] TLD refers to Authoritative Name Servers','log-green');
+            setInfo(`<span style="color:#ff7b72">DNS Phase 4</span> — Iterative Query to Authoritative Server`);
+            
+            animPkt(1,4,{color:'#ff7b72',label:'QRY',r:8},()=>{
+              nodes[4].active = true;
+              animPkt(4,1,{color:'#3fb950',label:'ANS',r:8,glow:true},()=>{
+                phaseIdx = 4;
+                simState.dnsCache.push({domain:'example.com', type:'A', val:'93.184.216.34'});
+                renderPanel();
+                addLog('[DNS] Authoritative answers with IP: 93.184.216.34','log-green');
+                setInfo(`<span style="color:#3fb950">DNS Phase 5</span> — Resolver caches the answer and replies to Client`);
+                
+                animPkt(1,0,{color:'#3fb950',label:'ANS',r:9,glow:true},()=>{
+                  addLog('[DNS] Resolution complete. Client can now connect to IP.','log-green');
+                  running = false; document.getElementById('btn-run').disabled = false;
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  THREAT SIMULATIONS
+// ═══════════════════════════════════════════════════════════
+
+// ── ARP Spoofing / MitM ─────────────────────────────────────
+function runARPSpoof(){
+  const nodes=simState.nodes;
+  const victim=nodes[0], gateway=nodes[1], attacker=nodes[2], sw=nodes[3], internet=nodes[4];
+  phaseIdx=0;
+  document.getElementById('threat-label').textContent='☠ ATTACK: ARP SPOOFING / MAN-IN-THE-MIDDLE';
+  document.getElementById('threat-label').classList.add('show');
+
+  // Baseline: show legit ARP table
+  simState.arpSpoofTable=[
+    {ip:'192.168.1.1', mac:'00:11:22:33:44:55', legit:true,  fake:false},
+    {ip:'192.168.1.10',mac:'AA:BB:CC:11:22:33', legit:true,  fake:false},
+    {ip:'192.168.1.99',mac:'DE:AD:BE:EF:00:01', legit:false, fake:false},
+  ];
+  victim.active=true; gateway.active=true; sw.active=true;
+  addLog('[ARP] Normal state: Victim→Gateway ARP table correct','log-green');
+  setInfo(`<span style="color:#3fb950">Phase 1</span> — Baseline: Victim correctly maps 192.168.1.1 → GW MAC`);
+  renderPanel(); render();
+
+  // Legit traffic flows victim→gateway
+  animPkt(0,3,{color:'#3fb950',label:'DATA',r:8,glow:true},()=>
+    animPkt(3,1,{color:'#3fb950',label:'DATA',r:8},()=>{
+      later(()=>{
+        phaseIdx=1;
+        addLog('[ARP-SPOOF] Attacker begins sending Gratuitous ARP flood!','log-red');
+        setInfo(`<span style="color:#f85149">Phase 2</span> — Attacker broadcasts fake GARPs: "192.168.1.1 is at DE:AD:BE:EF:00:01"`);
+        attacker.active=true;
+
+        let garpCount=0;
+        function sendGARPs(){
+          if(garpCount>=5){ later(()=>poisonPhase(),300); return; }
+          garpCount++;
+          addLog(`[GARP #${garpCount}] 192.168.1.1 → DE:AD:BE:EF:00:01 (fake!)`, 'log-red');
+          // Blast to switch, switch floods
+          animPkt(2,3,{color:'#f85149',label:'GARP',r:9,glow:true},()=>{
+            // Flood to all
+            [0,1,4].forEach((id,i)=>later(()=>animPkt(3,id,{color:'#f85149',label:'GARP',r:7},()=>{}),i*80));
+            later(sendGARPs,350);
+          });
+        }
+        sendGARPs();
+
+        function poisonPhase(){
+          phaseIdx=2;
+          addLog('[ARP-SPOOF] ☠ Victim ARP cache POISONED — GW IP now maps to attacker MAC','log-red');
+          setInfo(`<span style="color:#f85149">Phase 3</span> — Cache poisoned. Victim sends "gateway-bound" traffic to ATTACKER`);
+          victim.poisoned=true;
+          simState.arpSpoofTable[0]={ip:'192.168.1.1',mac:'DE:AD:BE:EF:00:01 ← FAKE',legit:false,fake:true};
+          simState.arpPoisoned=true;
+          renderPanel(); render();
+
+          later(()=>{
+            phaseIdx=3;
+            addLog('[ARP-SPOOF] Victim sends traffic toward "Gateway" — actually hits Attacker!','log-red');
+            setInfo(`<span style="color:#f85149">Phase 4</span> — MitM active: Victim→Attacker→Gateway (attacker reads all traffic)`);
+
+            function interceptLoop(i){
+              if(i>3){later(()=>mitigationPhase(),500);return;}
+              // Victim→Switch (thinks it's going to GW)
+              animPkt(0,3,{color:'#d29922',label:'DATA',r:9,glow:true},()=>
+                // Switch sends to attacker (CAM has attacker's MAC for GW IP)
+                animPkt(3,2,{color:'#d29922',label:'SNIFF',r:9,glow:true},()=>{
+                  addLog(`[MITM] Packet #${i+1} intercepted by attacker — reading plaintext!`,'log-red');
+                  // Attacker forwards to real GW (to stay covert)
+                  animPkt(2,3,{color:'#d29922',label:'FWD',r:7},()=>
+                    animPkt(3,1,{color:'#3fb950',label:'DATA',r:7},()=>{
+                      later(()=>interceptLoop(i+1),200);
+                    }));
+                }));
+            }
+            interceptLoop(0);
+
+            function mitigationPhase(){
+              phaseIdx=4;
+              addLog('[DAI] Dynamic ARP Inspection enabled — validating ARP packets','log-purple');
+              setInfo(`<span style="color:#bc8cff">Phase 5</span> — Mitigation: DAI drops fake GARPs. IPSG enforces bindings.`);
+              // Show fake GARPs being dropped at switch
+              let di=0;
+              function dropGARPs(){
+                if(di++>2){
+                  victim.poisoned=false;
+                  simState.arpSpoofTable[0]={ip:'192.168.1.1',mac:'00:11:22:33:44:55',legit:true,fake:false};
+                  simState.arpPoisoned=false;
+                  addLog('[DAI] ARP cache restored. Legitimate traffic flows again.','log-green');
+                  setInfo(`<span style="color:#3fb950">Mitigated</span> — Dynamic ARP Inspection (DAI) + IP Source Guard blocked the attack`);
+                  renderPanel(); render();
+                  running=false; document.getElementById('btn-run').disabled=false;
+                  return;
+                }
+                animPkt(2,3,{color:'#f85149',label:'GARP',r:8},()=>{
+                  addLog('[DAI] ✕ Fake GARP DROPPED at switch — not in DHCP snooping binding table','log-purple');
+                  later(dropGARPs,300);
+                });
+              }
+              dropGARPs();
+            }
+          },400);
+        }
+      },400);
+    }));
+}
+
+// ── SYN Flood / DDoS ────────────────────────────────────────
+function runSYNFlood(){
+  const nodes=simState.nodes;
+  const server=nodes[0], legitA=nodes[1], bot1=nodes[2], bot2=nodes[3], bot3=nodes[4], legitB=nodes[5], cc=nodes[6];
+  const MAX_QUEUE=8;
+  simState.synQueueMax=MAX_QUEUE;
+  simState.synQueue=[];
+  phaseIdx=0;
+
+  document.getElementById('threat-label').textContent='☠ ATTACK: SYN FLOOD DDoS';
+  document.getElementById('threat-label').classList.add('show');
+
+  addLog('[SYN-FLOOD] C&C sends botnet activation command','log-red');
+  setInfo(`<span style="color:#ff6e40">Phase 1</span> — C&C activates botnet. Bots will flood spoofed SYN packets.`);
+  cc.active=true; server.active=true;
+
+  // Phase 1: C&C commands bots
+  animPkt(6,2,{color:'#f85149',label:'CMD',r:7,glow:true},()=>{
+    animPkt(6,3,{color:'#f85149',label:'CMD',r:7},()=>{
+      animPkt(6,4,{color:'#f85149',label:'CMD',r:7},()=>{
+        [bot1,bot2,bot3].forEach(b=>b.active=true);
+        later(()=>{
+          phaseIdx=1;
+          addLog('[SYN-FLOOD] Flood begins — thousands of SYN packets with spoofed src IPs','log-red');
+          setInfo(`<span style="color:#ff6e40">Phase 2</span> — SYN flood in progress. Each SYN allocates a TCB on the server.`);
+          floodPhase();
+        },300);
+      });
+    });
+  });
+
+  let floodTick=0;
+  const spoofedIPs=['10.x.x.1','172.x.x.2','1.2.3.x','5.6.7.x','9.8.7.x','11.x.x.3','99.x.x.1','55.x.x.9'];
+
+  function floodPhase(){
+    if(floodTick>18){
+      later(()=>{phaseIdx=3;dropLegit();},200);
+      return;
+    }
+    floodTick++;
+
+    const botIds=[2,3,4];
+    const srcBot=botIds[floodTick%3];
+    const spoofIP=spoofedIPs[floodTick%spoofedIPs.length];
+
+    // Send attack SYN
+    animPkt(srcBot,0,{color:'#f85149',label:'SYN',r:8,glow:floodTick<5},()=>{
+      // Server allocates TCB and sends SYN-ACK (wasted, spoofed src won't reply)
+      if(simState.synQueue.length<MAX_QUEUE){
+        simState.synQueue.push({attack:true,src:spoofIP});
+        simState.stats.pkts++;
+        addLog(`[SYN] ATTACK SYN from ${spoofIP} — queue ${simState.synQueue.length}/${MAX_QUEUE}`,'log-red');
+        // Server wastes a SYN-ACK into the void
+        later(()=>animPkt(0,srcBot,{color:'#d29922',label:'S-A?',r:6},()=>{}),50);
+      }
+      renderPanel();
+    });
+
+    // Also inject a legit SYN occasionally
+    if(floodTick===6){
+      later(()=>{
+        addLog('[SYN] Legitimate SYN from 203.0.113.10 — attempting connection','log-green');
+        animPkt(1,0,{color:'#3fb950',label:'SYN',r:9,glow:true},()=>{
+          if(simState.synQueue.length<MAX_QUEUE){
+            simState.synQueue.push({attack:false,src:'203.0.113.10'});
+            addLog('[SYN] Legit connection queued (for now)','log-green');
+          } else {
+            addLog('[SYN] ✕ Legit SYN DROPPED — queue full!','log-red');
+          }
+          renderPanel();
+        });
+      },100);
+    }
+
+    later(floodPhase, floodTick<8?180:100);
+    renderPanel();
+  }
+
+  function dropLegit(){
+    phaseIdx=3;
+    server.state='active';
+    // Fill queue completely
+    while(simState.synQueue.length<MAX_QUEUE) simState.synQueue.push({attack:true,src:'x.x.x.x'});
+    simState.synDropping=true;
+    addLog('[SYN-FLOOD] ☠ Queue FULL — server now dropping ALL new connections!','log-red');
+    setInfo(`<span style="color:#f85149">Phase 4 — FULL</span> — SYN queue exhausted. Legitimate users get ECONNREFUSED.`);
+    renderPanel(); render();
+
+    // Show legit connections being dropped
+    later(()=>{
+      addLog('[DROPPED] Legit client 203.0.113.20 → RST (connection refused)','log-red');
+      animPkt(5,0,{color:'#3fb950',label:'SYN',r:9,glow:true},()=>{
+        animPkt(0,5,{color:'#f85149',label:'RST!',r:8,glow:true},()=>{
+          later(()=>{
+            phaseIdx=4;
+            addLog('[SYN-COOKIE] Enabling SYN Cookies — stateless challenge/response','log-purple');
+            setInfo(`<span style="color:#bc8cff">Phase 5</span> — Mitigation: SYN Cookies encode state in ISN — no TCB allocated until ACK`);
+            // SYN cookies: bots can't complete (spoofed src), legit can
+            later(()=>{
+              simState.synQueue=simState.synQueue.filter(s=>!s.attack);
+              simState.synDropping=false;
+              addLog('[SYN-COOKIE] Attack SYNs silently discarded. Legit connection completes!','log-green');
+              animPkt(1,0,{color:'#bc8cff',label:'SYN',r:9,glow:true},()=>
+                animPkt(0,1,{color:'#bc8cff',label:'S-A*',r:9},()=>
+                  animPkt(1,0,{color:'#3fb950',label:'ACK',r:8,glow:true},()=>{
+                    addLog('[SYN-COOKIE] ✓ Legit connection ESTABLISHED via SYN Cookie','log-green');
+                    setInfo(`<span style="color:#3fb950">Mitigated</span> — SYN Cookies + rate limiting restored service to legitimate clients`);
+                    renderPanel(); render();
+                    running=false; document.getElementById('btn-run').disabled=false;
+                  })));
+            },600);
+          },400);
+        });
+      });
+    },400);
+  }
+}
+
+// ── MAC Flooding ─────────────────────────────────────────────
+function runMACFlood(){
+  const nodes=simState.nodes;
+  const attacker=nodes[0], sw=nodes[1], hA=nodes[2], hB=nodes[3], hC=nodes[4];
+  simState.camFillPct=0;
+  simState.camTable=[];
+  simState.camFull=false;
+  phaseIdx=0;
+
+  document.getElementById('threat-label').textContent='☠ ATTACK: MAC ADDRESS TABLE FLOOD';
+  document.getElementById('threat-label').classList.add('show');
+
+  addLog('[MAC-FLOOD] Normal operation: Switch learning legit MACs','log-amber');
+  setInfo(`<span style="color:#d29922">Phase 1</span> — Baseline: Switch builds CAM table from legitimate frames`);
+  sw.active=true; hA.active=true; hB.active=true; hC.active=true;
+
+  // Seed legit entries
+  simState.camTable=[
+    {mac:'AA:BB:CC:11:22:33',port:'Gi0/2',age:240,fake:false},
+    {mac:'AA:BB:CC:44:55:66',port:'Gi0/3',age:180,fake:false},
+    {mac:'AA:BB:CC:77:88:99',port:'Gi0/4',age:120,fake:false},
+  ];
+  simState.camFillPct=3;
+  renderPanel();
+
+  // Show normal forwarding
+  animPkt(2,1,{color:'#3fb950',label:'DATA',r:7},()=>
+    animPkt(1,3,{color:'#3fb950',label:'DATA',r:7},()=>{
+      later(()=>{
+        phaseIdx=1;
+        addLog('[MAC-FLOOD] ⚠ Attacker begins MAC flood — sending unique-MAC frames at ~14k fps!','log-red');
+        setInfo(`<span style="color:#f85149">Phase 2</span> — Attacker generates frames with random source MACs, filling the CAM table`);
+        attacker.active=true;
+
+        let tick=0;
+        function floodMACs(){
+          if(simState.camFillPct>=100){
+            later(()=>failOpenPhase(),300);
+            return;
+          }
+          tick++;
+          const fakeMAC=`DE:AD:${tick.toString(16).padStart(2,'0').toUpperCase()}:${(tick>>8).toString(16).padStart(2,'0').toUpperCase()}:${(tick>>16).toString(16).padStart(2,'0').toUpperCase()}:00`;
+
+          animPkt(0,1,{color:'#d29922',label:'FLD',r:7,glow:tick<4},()=>{
+            simState.camFillPct=Math.min(100,simState.camFillPct+(tick<10?6:tick<16?8:15));
+            if(simState.camTable.length<8) simState.camTable.push({mac:fakeMAC,port:'Gi0/1',age:0,fake:true});
+            if(tick%3===0) addLog(`[CAM] Table ${Math.round(simState.camFillPct)}% full — flooding ${fakeMAC}`,'log-amber');
+            renderPanel();
+          });
+          later(floodMACs, tick<8?220:tick<14?150:80);
+        }
+        floodMACs();
+      },400);
+    }));
+
+  function failOpenPhase(){
+    phaseIdx=3;
+    simState.camFull=true;
+    sw.failOpen=true;
+    addLog('[MAC-FLOOD] ☠ CAM TABLE FULL (1024/1024) — Switch entering FAIL-OPEN mode!','log-red');
+    addLog('[MAC-FLOOD] Switch now broadcasts EVERY frame to ALL ports — acting as a hub!','log-red');
+    setInfo(`<span style="color:#f85149">Phase 4 — FAIL OPEN</span> — Switch is now a hub. Attacker receives ALL traffic from ALL hosts.`);
+    renderPanel(); render();
+
+    later(()=>{
+      phaseIdx=4;
+      addLog('[BROADCAST] Host-A sends private data — now reaches Attacker too!','log-red');
+      setInfo(`<span style="color:#f85149">Phase 5</span> — All traffic broadcast: Attacker sniffs Host-A ↔ Host-B ↔ Host-C`);
+
+      // Broadcast storm: every host's traffic goes to everyone including attacker
+      function broadcastRound(i){
+        if(i>2){later(()=>portSecurityPhase(),600);return;}
+        const src=[2,3,4][i];
+        const dsts=[0,2,3,4].filter(x=>x!==src);
+        addLog(`[BROADCAST] ${nodes[src].label} frame flooded to ALL ports including attacker`,'log-red');
+        dsts.forEach((dst,j)=>later(()=>animPkt(src,dst,{color:'#ff6e40',label:'BCAST',r:8,glow:j===0},()=>{}),j*80));
+        later(()=>broadcastRound(i+1),500);
+      }
+      broadcastRound(0);
+    },500);
+  }
+
+  function portSecurityPhase(){
+    phaseIdx=5;
+    addLog('[PORT-SEC] Enabling Port Security on Gi0/1 — max 1 MAC allowed','log-purple');
+    setInfo(`<span style="color:#bc8cff">Phase 6</span> — Mitigation: Port Security shuts down attack port after violation`);
+
+    later(()=>{
+      // Attacker tries another flood frame
+      animPkt(0,1,{color:'#f85149',label:'FLD',r:8},()=>{
+        addLog('[PORT-SEC] ✕ MAC violation on Gi0/1 — port SHUT DOWN (err-disabled)!','log-purple');
+        attacker.active=false; attacker.blocked=true;
+        // Recover switch
+        simState.camFull=false; sw.failOpen=false;
+        simState.camFillPct=3;
+        simState.camTable=simState.camTable.filter(e=>!e.fake);
+
+        later(()=>{
+          addLog('[PORT-SEC] CAM table flushed. Normal forwarding restored.','log-green');
+          setInfo(`<span style="color:#3fb950">Mitigated</span> — Port Security (err-disabled) + 802.1X prevents unauthenticated flooding`);
+          // Normal traffic restored
+          animPkt(2,1,{color:'#3fb950',label:'DATA',r:7,glow:true},()=>
+            animPkt(1,3,{color:'#3fb950',label:'DATA',r:7},()=>{
+              renderPanel(); render();
+              running=false; document.getElementById('btn-run').disabled=false;
+            }));
+        },500);
+      });
+    },500);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHAOS MODE ENGINE
+// ═══════════════════════════════════════════════════════════
+
+function toggleChaos(){
+  chaosMode=!chaosMode;
+  const btn=document.getElementById('btn-chaos');
+  if(chaosMode){
+    btn.classList.add('btn-chaos-on');
+    btn.textContent='⚡ Chaos ON — click nodes/links';
+    document.querySelector('.canvas-area').classList.add('chaos-active');
+    addLog('[CHAOS] Chaos Mode ON — click any router or link to break it!','log-amber');
+  } else {
+    btn.classList.remove('btn-chaos-on');
+    btn.textContent='⚡ Chaos Mode';
+    document.querySelector('.canvas-area').classList.remove('chaos-active');
+    addLog('[CHAOS] Chaos Mode OFF','log-amber');
+  }
+  document.getElementById('chaos-badge').textContent=chaosMode?'⚡ Chaos ON':'⚡ Chaos OFF';
+  render();
+}
+
+function hitTestNode(x,y){
+  const topo=getTopo();
+  for(const n of simState.nodes){
+    const p=getNodePos(n);
+    const R=n.type==='switch'||n.type==='server'?28:26;
+    if(Math.hypot(x-p.x,y-p.y)<R) return n;
+  }
+  return null;
+}
+
+function hitTestLink(x,y){
+  const topo=getTopo();
+  for(const l of simState.nodes?getTopo().links:[]){
+    const a=simState.nodes[l.a], b=simState.nodes[l.b];
+    if(!a||!b) continue;
+    const pa=getNodePos(a),pb=getNodePos(b);
+    // distance from point to segment
+    const dx=pb.x-pa.x, dy=pb.y-pa.y;
+    const t=Math.max(0,Math.min(1,((x-pa.x)*dx+(y-pa.y)*dy)/(dx*dx+dy*dy||1)));
+    const cx=pa.x+t*dx, cy=pa.y+t*dy;
+    if(Math.hypot(x-cx,y-cy)<12) return l;
+  }
+  return null;
+}
+
+function applyChaosBroken(node, link){
+  if(node && !node.isAttacker){
+    const id=node.id;
+    if(simState.brokenNodes.has(id)){
+      // Restore
+      simState.brokenNodes.delete(id);
+      node.active=true; node.state='active';
+      addLog(`[CHAOS] ↺ ${node.label} RESTORED — recalculating paths`,'log-amber');
+    } else {
+      simState.brokenNodes.add(id);
+      node.active=false; node.state='idle';
+      packets=packets.filter(p=>p._id);
+      addLog(`[CHAOS] ✗ ${node.label} FAILED — simulating node down event`,'log-red');
+    }
+  } else if(link){
+    const key=[link.a,link.b].sort().join('-');
+    if(simState.brokenLinks.has(key)){
+      simState.brokenLinks.delete(key);
+      link.active=true;
+      addLog(`[CHAOS] ↺ Link ${simState.nodes[link.a]?.label}↔${simState.nodes[link.b]?.label} RESTORED`,'log-amber');
+    } else {
+      simState.brokenLinks.add(key);
+      link.active=false;
+      addLog(`[CHAOS] ✗ Link ${simState.nodes[link.a]?.label}↔${simState.nodes[link.b]?.label} CUT — rerouting…`,'log-red');
+    }
+  }
+
+  // Trigger recompute for routing protocols
+  if(currentProto==='ospf'||currentProto==='bgp'){
+    recomputeSPFWithChaos();
+  }
+  render(); renderPanel();
+}
+
+function recomputeSPFWithChaos(){
+  const nodes=simState.nodes;
+  const tLinks=getTopo().links;
+  const srcId=+document.getElementById('sel-src').value;
+  const dstId=+document.getElementById('sel-dst').value;
+
+  // Filter out broken nodes and links
+  const aliveLinks=tLinks.filter(l=>{
+    const key=[l.a,l.b].sort().join('-');
+    return !simState.brokenLinks.has(key) &&
+           !simState.brokenNodes.has(l.a) &&
+           !simState.brokenNodes.has(l.b);
+  });
+
+  const n=nodes.length;
+  const dist=Array(n).fill(Infinity), prev=Array(n).fill(-1), vis=Array(n).fill(false);
+  if(simState.brokenNodes.has(srcId)){
+    addLog('[SPF] Source node is down — cannot compute path','log-red');
+    simState.spfPathEdges=new Set(); simState.spfPath=[];
+    return;
+  }
+  dist[srcId]=0;
+  const pq=[[0,srcId]];
+
+  while(pq.length){
+    pq.sort((a,b)=>a[0]-b[0]);
+    const[d,u]=pq.shift();
+    if(vis[u]||simState.brokenNodes.has(u)) continue;
+    vis[u]=true;
+    aliveLinks.filter(l=>l.a===u||l.b===u).forEach(l=>{
+      const v=l.a===u?l.b:l.a;
+      if(vis[v]||simState.brokenNodes.has(v)) return;
+      const alt=d+l.cost;
+      if(alt<dist[v]){ dist[v]=alt; prev[v]=u; pq.push([alt,v]); }
+    });
+  }
+
+  const path=[];let c=dstId;while(c!==-1){path.unshift(c);c=prev[c];}
+
+  if(dist[dstId]===Infinity){
+    simState.spfPathEdges=new Set(); simState.spfPath=[];
+    setInfo(`<span style="color:#f85149">⚠ NO PATH</span> — ${nodes[srcId]?.label} → ${nodes[dstId]?.label} unreachable after failure!`);
+    addLog(`[SPF] No path to ${nodes[dstId]?.label} — network partitioned!`,'log-red');
+  } else {
+    simState.spfPath=path;
+    simState.spfPathEdges=new Set();
+    for(let i=0;i<path.length-1;i++) simState.spfPathEdges.add([path[i],path[i+1]].sort().join('-'));
+    const label=path.map(i=>nodes[i].label).join(' → ');
+    setInfo(`<span style="color:#ff6e40">⚡ REROUTED</span> — New path: <span style="color:#ff6e40">${label}</span> cost=${dist[dstId]}`);
+    addLog(`[SPF] Converged on new path: ${label} (cost=${dist[dstId]})`,'log-amber');
+    simState.spfDist={pathCost:dist[dstId]};
+    // Animate new path
+    let pi=0;
+    function newHop(){
+      if(pi>=path.length-1) return;
+      animPkt(path[pi],path[pi+1],{color:'#ff6e40',label:'DATA',r:9,glow:true},()=>later(newHop,60));
+      pi++;
+    }
+    later(newHop,100);
+  }
+}
+
+// Canvas click → chaos handler
+canvas.addEventListener('click',e=>{
+  if(!chaosMode||!chaosEnabled) return;
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=W/rect.width, scaleY=H/rect.height;
+  const x=(e.clientX-rect.left)*scaleX;
+  const y=(e.clientY-rect.top)*scaleY;
+  const node=hitTestNode(x,y);
+  const link=node?null:hitTestLink(x,y);
+  if(node||link) applyChaosBroken(node,link);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  UI CONTROLLER WIRING
+// ═══════════════════════════════════════════════════════════
+function setProto(p){
+  currentProto=p;
+  // Reset chaos and threat UI
+  chaosMode=false;
+  chaosEnabled=CHAOS_PROTOCOLS.has(p);
+  document.getElementById('btn-chaos').classList.remove('btn-chaos-on');
+  document.getElementById('btn-chaos').textContent='⚡ Chaos Mode';
+  document.getElementById('btn-chaos').style.opacity=chaosEnabled?'1':'0.35';
+  document.getElementById('btn-chaos').title=chaosEnabled?'Click nodes/links to break them mid-simulation':'Not available for this protocol';
+  document.getElementById('chaos-badge').textContent='⚡ Chaos OFF';
+  document.querySelector('.canvas-area').classList.remove('chaos-active');
+  document.getElementById('threat-label').classList.remove('show');
+
+  const isThreat=['arp-spoof','syn-flood','mac-flood'].includes(p);
+
+  document.querySelectorAll('.pnav').forEach(b=>{
+    const isActive=b.dataset.proto===p;
+    b.classList.toggle('active',isActive);
+  });
+  const topo=getTopo();
+  document.documentElement.style.setProperty('--current-accent',topo.accent);
+  document.querySelectorAll('.btn.primary').forEach(b=>{
+    b.style.background=topo.accentBg;
+    b.style.color=topo.accent;
+    b.style.borderColor=topo.accentBorder;
+  });
+  document.querySelectorAll('.ptab.active').forEach(t=>{
+    t.style.borderColor=topo.accent;
+    t.style.color=topo.text;
+  });
+
+  const phaseBar=document.getElementById('phase-bar');
+  const phaseSteps=document.getElementById('phase-steps');
+  const info=PROTO_INFO[p];
+  phaseSteps.innerHTML=info.phases.map((ph,i)=>
+    `<button class="pstep${i===0?' active':''}" data-pi="${i}">${i+1}. ${ph}</button>`
+  ).join('');
+  phaseBar.style.display='';
+
+  const srcWrap=document.getElementById('src-wrap');
+  const dstWrap=document.getElementById('dst-wrap');
+  const showSelects = p==='ospf'||p==='bgp';
+  srcWrap.style.display=showSelects?'':'none';
+  dstWrap.style.display=showSelects?'':'none';
+
+  if(showSelects){
+    const sel1=document.getElementById('sel-src');
+    const sel2=document.getElementById('sel-dst');
+    sel1.innerHTML=topo.nodes.map(n=>`<option value="${n.id}">${n.label}</option>`).join('');
+    sel2.innerHTML=topo.nodes.map(n=>`<option value="${n.id}">${n.label}</option>`).join('');
+    sel2.value=topo.nodes[topo.nodes.length-1].id;
+  }
+
+  initSimState();
+  phaseIdx=0;
+  logEntries=[{msg:`[SYSTEM] Loaded ${p.toUpperCase()} — ${PROTO_INFO[p].rfc}`,cls:isThreat?'log-red':''}];
+  setInfo(`<span style="color:${topo.accent}">${p.toUpperCase()}</span> — ${PROTO_INFO[p].desc.slice(0,80)}...`);
+  renderPanel();
+  resizeCanvas();
+  render();
+}
+
+document.getElementById('proto-nav').addEventListener('click',e=>{
+  const btn=e.target.closest('.pnav');
+  if(!btn)return;
+  if(running){clearTimers();packets=[];running=false;}
+  document.getElementById('btn-run').disabled=false;
+  setProto(btn.dataset.proto);
+});
+
+function startSimulation(inStepMode) {
+  running = true;
+  stepMode = inStepMode;
+  stepQueue = [];
+  
+  initSimState();
+  packets = [];
+  logEntries = [];
+  phaseIdx = 0;
+  render(); 
+  renderPanel();
+
+  if(currentProto==='ospf')           runOSPF();
+  else if(currentProto==='bgp')       runBGP();
+  else if(currentProto==='stp')       runSTP();
+  else if(currentProto==='tcp')       runTCP();
+  else if(currentProto==='arp')       runARP();
+  else if(currentProto==='vlan')      runVLAN();
+  else if(currentProto==='dhcp')      runDHCP();
+  else if(currentProto==='dns')       runDNS();
+  else if(currentProto==='arp-spoof') runARPSpoof();
+  else if(currentProto==='syn-flood') runSYNFlood();
+  else if(currentProto==='mac-flood') runMACFlood();
+}
+
+document.getElementById('btn-run').addEventListener('click', () => {
+  if (running) {
+    if (stepMode) {
+      stepMode = false;
+      document.getElementById('btn-step').classList.remove('primary');
+      addLog('[System] Resuming normal playback...', 'log-green');
+      
+      let delay = 0;
+      while(stepQueue.length > 0) {
+         const fn = stepQueue.shift();
+         setTimeout(fn, delay); 
+         delay += 120;
+      }
+    }
+    return;
+  }
+  startSimulation(false);
+});
+
+document.getElementById('btn-step').addEventListener('click', () => {
+  if (!running) {
+     addLog('[System] Started in Step Mode', 'log-amber');
+     startSimulation(true);
+     return;
+  }
+  
+  if (!stepMode) {
+     stepMode = true;
+     addLog('[System] Paused. Switched to Step Mode. Click Step to advance.', 'log-amber');
+     return;
+  }
+  
+  if (stepQueue.length > 0) {
+     const fn = stepQueue.shift();
+     if (stepQueue.length === 0) {
+         document.getElementById('btn-step').classList.remove('primary');
+     }
+     fn(); 
+  } else {
+     addLog('[System] Waiting for next protocol phase to queue...', 'log-amber');
+  }
+});
+
+document.getElementById('btn-chaos').addEventListener('click',()=>{
+  if(!chaosEnabled){
+    addLog('[CHAOS] Chaos Mode only available for OSPF and BGP — run simulation first','log-amber');
+    return;
+  }
+  toggleChaos();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  clearTimers(); packets=[]; running=false; stepMode=false; stepQueue=[];
+  chaosMode=false;
+  document.getElementById('btn-step').classList.remove('primary');
+  document.getElementById('btn-chaos').classList.remove('btn-chaos-on');
+  document.getElementById('btn-chaos').textContent='⚡ Chaos Mode';
+  document.getElementById('chaos-badge').textContent='⚡ Chaos OFF';
+  document.querySelector('.canvas-area').classList.remove('chaos-active');
+  document.getElementById('threat-label').classList.remove('show');
+  document.getElementById('btn-run').disabled=false;
+  initSimState();
+  phaseIdx=0;
+  logEntries=[{msg:'[SYSTEM] Reset complete',cls:''}];
+  setInfo('Ready — click ▶ Run to start the simulation');
+  renderPanel(); render();
+});
+
+document.getElementById('panel-tabs').addEventListener('click',e=>{
+  const tab=e.target.closest('.ptab');
+  if(!tab)return;
+  currentTab=tab.dataset.tab;
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('active',t===tab));
+  renderPanel();
+});
+
+document.addEventListener('click',e=>{
+  const ps=e.target.closest('.pstep');
+  if(ps){
+    document.querySelectorAll('.pstep').forEach(p=>p.classList.remove('active'));
+    ps.classList.add('active');
+    phaseIdx=+ps.dataset.pi;
+    renderPanel();
+  }
+});
+
+const ptabs=document.querySelectorAll('.ptab');
+ptabs.forEach(t=>{
+  t.addEventListener('click',()=>{
+    const accent=getTopo().accent;
+    ptabs.forEach(tab=>{tab.style.color='';tab.style.borderColor='';});
+    t.style.color=accent;t.style.borderColor=accent;
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+resizeCanvas();
+setProto('ospf');
+render();
+</script>
+</body>
+</html>
